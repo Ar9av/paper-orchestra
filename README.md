@@ -30,6 +30,8 @@ that substantially outperforms single-agent and tree-search baselines on the `Pa
 
 This repo turns those prompts, schemas, halt rules, and verification pipelines into a set of **host-agent-executable skills**. There are **no API keys**, no SDK dependencies, no embedded LLM calls. The skills are instruction documents plus deterministic helpers; your coding agent does all LLM reasoning and web search using its own tools.
 
+<img width="640" height="413" alt="image" src="https://github.com/user-attachments/assets/073630c8-9790-4b38-b8c4-184cec6eee06" />
+
 ## How skills work here
 
 Each skill is:
@@ -42,6 +44,7 @@ Each skill is:
   coverage gates. No network, no LLM, no API keys.
 
 Everything else (LLM reasoning, web search, Semantic Scholar lookups, LaTeX compilation) is **delegated to the host agent** by instruction. See [`skills/paper-orchestra/references/host-integration.md`](skills/paper-orchestra/references/host-integration.md) for per-host invocation (Claude Code, Cursor, Antigravity, Cline, Aider).
+
 
 ## The seven skills
 
