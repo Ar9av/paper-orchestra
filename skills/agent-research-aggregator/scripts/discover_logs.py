@@ -230,6 +230,50 @@ def scan_general(base: Path, depth: int, since: datetime | None) -> list[dict]:
 # Main
 # ---------------------------------------------------------------------------
 
+def decode_claude_project_path(dir_name: str) -> str | None:
+    """
+    Claude Code encodes project paths as directory names by replacing '/' with '-'.
+    e.g. '-home-user-projects-myproject' → '/home/user/projects/myproject'
+    Returns None if it doesn't look like an encoded path.
+    """
+    if not dir_name.startswith("-"):
+        return None
+    # Replace leading '-' then swap remaining '-' that correspond to path separators.
+    # The heuristic: a segment starting with '-' followed by a lowercase letter or
+    # digit is likely an encoded absolute path.
+    decoded = dir_name.replace("-", "/")
+    if decoded.startswith("/") and len(decoded) > 2:
+        return decoded
+    return None
+
+
+def infer_project(path: Path, search_root: Path, agent: str) -> str:
+    """
+    Infer a human-readable project label for a file.
+
+    For Claude Code logs stored under ~/.claude/projects/<encoded-path>/,
+    decode the project directory name back to the original path.
+    For all other files, use the search root name or a top-level subdirectory.
+    """
+    try:
+        rel = path.relative_to(Path.home() / ".claude" / "projects")
+        top = rel.parts[0] if rel.parts else ""
+        decoded = decode_claude_project_path(top)
+        if decoded:
+            return decoded
+    except ValueError:
+        pass
+
+    # For files inside a search root, use the root itself as the project label
+    try:
+        path.relative_to(search_root)
+        return str(search_root)
+    except ValueError:
+        pass
+
+    return str(path.parent)
+
+
 def main():
     parser = argparse.ArgumentParser(description="Discover AI agent experiment logs")
     parser.add_argument("--search-roots", default=".", help="Comma-separated root dirs to scan")
@@ -239,6 +283,9 @@ def main():
     parser.add_argument("--since", default=None,
                         help="ISO 8601 date; only include files modified after this")
     parser.add_argument("--out", required=True, help="Output JSON path")
+    parser.add_argument("--project", default=None,
+                        help="Filter to files belonging to this project label only "
+                             "(must match a label from a prior discovery run)")
     args = parser.parse_args()
 
     search_roots = [Path(r.strip()).expanduser().resolve()
@@ -279,16 +326,22 @@ def main():
                     ) else "MEDIUM"
                     entries = scan_dir_glob(base, pattern, agent, priority,
                                             args.depth, since_dt)
+                    for e in entries:
+                        e["project"] = infer_project(Path(e["path"]), root, agent)
                     all_entries.extend(entries)
                     agent_counts[agent] += len(entries)
 
             # Root-level files (e.g. CLAUDE.md, .cursorrules)
             entries = scan_root_files(root, spec["root_files"], agent, since_dt)
+            for e in entries:
+                e["project"] = infer_project(Path(e["path"]), root, agent)
             all_entries.extend(entries)
             agent_counts[agent] += len(entries)
 
         # --- General project file scan ---
         entries = scan_general(root, args.depth, since_dt)
+        for e in entries:
+            e["project"] = infer_project(Path(e["path"]), root, "general")
         all_entries.extend(entries)
         agent_counts["general"] = agent_counts.get("general", 0) + len(entries)
 
@@ -306,6 +359,23 @@ def main():
                                  -Path(e["path"]).stat().st_mtime
                                  if Path(e["path"]).exists() else 0))
 
+    # Build project → file list index (before optional filtering)
+    by_project: dict[str, list[str]] = {}
+    for e in deduped:
+        proj = e.get("project", "unknown")
+        by_project.setdefault(proj, []).append(e["path"])
+
+    # Apply --project filter if requested
+    if args.project:
+        filtered = [e for e in deduped if e.get("project") == args.project]
+        if not filtered:
+            print(f"[ERROR] No files matched project '{args.project}'.", file=sys.stderr)
+            print("Available projects:", file=sys.stderr)
+            for proj in sorted(by_project):
+                print(f"  {proj}", file=sys.stderr)
+            sys.exit(1)
+        deduped = filtered
+
     # Build output manifest
     manifest = {
         "generated_at": datetime.now(tz=timezone.utc).isoformat(),
@@ -313,9 +383,11 @@ def main():
         "agents_scanned": enabled_agents,
         "since": args.since,
         "depth": args.depth,
+        "selected_project": args.project,
         "total_files": len(deduped),
         "total_size_bytes": sum(e["size_bytes"] for e in deduped),
         "by_agent": agent_counts,
+        "by_project": {p: len(paths) for p, paths in by_project.items()},
         "files": deduped,
     }
 
@@ -330,8 +402,24 @@ def main():
     print(f"Agents       : {', '.join(enabled_agents)}")
     print(f"Depth        : {args.depth}")
     print(f"Since        : {args.since or 'all time'}")
+    print()
+
+    # Always show the project list — this is the key output for project selection
+    print("Projects found:")
+    for i, (proj, paths) in enumerate(sorted(by_project.items()), 1):
+        marker = " ◀ selected" if args.project and proj == args.project else ""
+        print(f"  [{i}] {proj}  ({len(paths)} files){marker}")
+    print()
+
+    if args.project:
+        print(f"Filtered to project: {args.project}")
+    else:
+        print("[ACTION REQUIRED] Select a project before proceeding to Phase 2.")
+        print("Re-run with --project <label> to filter to one project.")
+    print()
+
     print(f"Total files  : {len(deduped)}")
-    print(f"Total size   : {manifest['total_size_bytes'] / 1024:.1f} KB")
+    print(f"Total size   : {sum(e['size_bytes'] for e in deduped) / 1024:.1f} KB")
     print()
     print("By agent:")
     for agent, count in sorted(agent_counts.items()):
@@ -349,6 +437,9 @@ def main():
         if len(truncated) > 5:
             print(f"  ... and {len(truncated)-5} more")
     print(f"\nManifest written to: {args.out}")
+    if not args.project:
+        # Exit with code 2 to signal to the caller that project selection is needed
+        sys.exit(2)
     if len(deduped) > 50:
         print(f"\n[ACTION REQUIRED] {len(deduped)} files found — review the manifest")
         print("and confirm with the user before proceeding to Phase 2.")

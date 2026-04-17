@@ -90,16 +90,52 @@ python skills/agent-research-aggregator/scripts/discover_logs.py \
     --out workspace/ara/discovered_logs.json
 ```
 
-The script prints a **discovery summary** to stdout — show it to the user before
-proceeding so they can confirm or prune the file list. Read
-`references/log-formats.md` to understand what each agent type stores.
+The script exits with code **2** when no `--project` filter is set (this is
+expected on the first run). It prints a **"Projects found"** list to stdout —
+show it to the user immediately.
 
 **If no logs are found at all:** stop and ask the user to specify
 `--search-roots` or point you at a directory that contains agent cache folders.
 
-**If the discovery summary shows irrelevant files:** ask the user whether to
-include or exclude them before continuing to Phase 2. Err on the side of
-inclusion — the extraction prompt is conservative.
+---
+
+## Phase 1.5 — Project Selection (mandatory)
+
+**A paper can only be written from a single project. You must ask the user
+which project to use before any LLM processing begins.**
+
+1. Display the numbered project list from the discovery summary, e.g.:
+   ```
+   Projects found:
+     [1] /home/alice/projects/my-rl-experiment  (42 files)
+     [2] /home/alice/projects/llm-eval-suite    (17 files)
+     [3] /home/alice/projects/old-demo          (3 files)
+   ```
+2. Ask: *"Which project should this paper be based on? Please choose a number
+   or paste the project path."*
+3. **Do not proceed to Phase 2 until the user has answered.**
+4. Re-run discovery with the chosen project to filter the manifest:
+
+```bash
+python skills/agent-research-aggregator/scripts/discover_logs.py \
+    --search-roots <roots> \
+    --agents <agents> \
+    --depth <depth> \
+    --since <since> \
+    --project "<chosen project path>" \
+    --out workspace/ara/discovered_logs.json
+```
+
+This overwrites `discovered_logs.json` so only the selected project's files
+remain. The script exits 0 on success.
+
+**If the discovery finds only one project:** skip the question and inform the
+user: *"Only one project found: `<path>`. Using it for the paper."* — then
+re-run with `--project` automatically.
+
+**If the discovery summary shows irrelevant files after filtering:** ask the
+user whether to include or exclude them before continuing to Phase 2. Err on
+the side of inclusion — the extraction prompt is conservative.
 
 ---
 
@@ -162,9 +198,11 @@ The LLM must return a `synthesis.json` with keys:
 
 Save to `workspace/ara/synthesis.json`.
 
-**If the logs contain multiple disconnected projects** (detected when
-`research_question` count > 1 in synthesis), pause and ask the user which
-project to target for the paper, or whether to combine them.
+> **Note:** By this point, the user has already selected a single project in
+> Phase 1.5. The synthesis should represent one coherent research thread. If
+> the LLM still surfaces multiple disconnected research questions, flag this
+> as a data quality warning in the audit report (Phase 5) but do not re-ask
+> for project selection — that decision was made earlier.
 
 ---
 
@@ -281,7 +319,7 @@ Tell the user exactly which two files are still needed, then offer to run
 | File is binary or non-text | Skip; note in report |
 | File > 200 KB | Truncate at 200 KB; note in report with path |
 | LLM extraction returns malformed JSON | Re-prompt once with the parse error appended; if still malformed, log the batch as `status: failed` and continue |
-| Synthesis returns > 1 `research_question` | Pause; ask user to select or merge |
+| Synthesis returns > 1 `research_question` | Log as data quality warning in audit report; do not re-ask for project (was selected in Phase 1.5) |
 | `results_tables` is empty after synthesis | Warn the user — PaperOrchestra's section-writing agent needs numeric data |
 
 ---
@@ -298,9 +336,15 @@ Tell the user exactly which two files are still needed, then offer to run
 ## Quick reference
 
 ```bash
-# Full run (all phases, all agents, cwd + home)
+# Phase 1: discover all projects (exits with code 2 — project selection required)
 python skills/agent-research-aggregator/scripts/discover_logs.py \
     --search-roots . ~ --out workspace/ara/discovered_logs.json
+
+# Phase 1.5: re-run with chosen project (exits 0)
+python skills/agent-research-aggregator/scripts/discover_logs.py \
+    --search-roots . ~ \
+    --project "/home/user/projects/my-chosen-project" \
+    --out workspace/ara/discovered_logs.json
 
 # ... (Phase 2: LLM extraction calls, see above) ...
 
