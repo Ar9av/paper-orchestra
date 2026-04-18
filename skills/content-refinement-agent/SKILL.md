@@ -1,6 +1,7 @@
 ---
 name: content-refinement-agent
 description: Step 5 of the PaperOrchestra pipeline (arXiv:2604.05018). Iteratively refine drafts/paper.tex by simulating peer review and applying targeted revisions, with strict accept/revert halt rules. Maintains a worklog and snapshots each iteration so revert is real, not symbolic. TRIGGER when the orchestrator delegates Step 5 or when the user asks to "refine the draft", "iterate on the paper", or "run peer review on this paper".
+data_access_level: verified_only
 ---
 
 # Content Refinement Agent (Step 5)
@@ -71,7 +72,19 @@ revert.
 
 ## Step-by-step
 
-### 0. Snapshot the initial draft
+### 0. Pre-refinement integrity gate
+
+Before snapshotting or scoring the initial draft, run the AI failure modes gate:
+
+Load `references/ai-failure-modes.md` (which points to `skills/shared/ai_failure_modes.md`).
+Run all 7 checks against the draft and the inputs. This gate runs **once only**,
+at the start of iteration 1.
+
+- CONFIRMED failure → write HALT entry to worklog.json, report to user, stop.
+- SUSPECTED failure → add WARNING comment to paper.tex, log in worklog.json, continue.
+- No failures → proceed.
+
+### 0b. Snapshot the initial draft
 
 ```bash
 python skills/content-refinement-agent/scripts/snapshot.py \
@@ -80,6 +93,7 @@ python skills/content-refinement-agent/scripts/snapshot.py \
 ```
 
 This creates `iter0/paper.tex`. Then compile to `iter0/paper.pdf`:
+
 
 ```bash
 cd workspace/refinement/iter0/ && latexmk -pdf -interaction=nonstopmode paper.tex
@@ -91,6 +105,11 @@ Score it (see Step 1 below) → `iter0/score.json`.
 
 For each iteration N starting from 1:
 
+**Writing quality pre-check (start of every iteration):** Load
+`references/writing-quality-check.md` and run the 5-category checklist
+(Categories A–E) against the current draft. Note violations and add them to
+the revision agenda.
+
 Load `references/reviewer-rubric.md` as the system prompt for the simulated
 reviewer call. The reviewer reads `iter<N-1>/paper.pdf` (or `paper.tex` if
 your host LLM lacks PDF input) and produces a JSON of strengths,
@@ -99,6 +118,14 @@ weaknesses, questions, and per-axis scores.
 The rubric is structured to mimic AgentReview (Jin et al., 2024) — the
 paper's chosen evaluator. We ship a faithful rubric in the references
 directory; the host agent's LLM does the actual reviewing.
+
+**Devil's Advocate reviewer:** One simulated reviewer must be designated the DA
+following `references/da-reviewer.md`. The DA challenges core claims from first
+principles (causal overclaiming, ablation coverage, baseline fairness,
+generalization claims, novelty inflation) rather than surface polish. If the DA
+issues a CRITICAL finding that remains unaddressed after all reviewers weigh in,
+that finding blocks the "refinement accepted" decision regardless of rubric scores.
+Log DA CRITICAL findings in worklog.json: `{da_critical: true, finding: "..."}`.
 
 Save to `workspace/refinement/iter<N>/review.json`.
 
@@ -231,16 +258,22 @@ The paper explicitly notes that early versions of the Refinement Agent
 listing missing baselines as limitations to artificially inflate
 acceptance scores." The verbatim prompt forbids this. **You must honor it:**
 
-- **Ignore reviewer requests for new experiments, ablations, or baselines.**
-  The Refinement Agent's job is presentation, not new science. If the
-  reviewer asks for missing data, simply skip those points — do NOT add
-  fabricated experiments, do NOT add a "future work" item promising them.
+- **[IRON RULE] Halt on score regression.** If `score_delta.py` returns exit
+  code 1 or 2 (REVERT), immediately revert to the previous snapshot and halt.
+  No further revision attempts are permitted after a regression.
+- **[IRON RULE] No new experiments in revision.** Ignore reviewer requests for
+  new experiments, ablations, or baselines. The Refinement Agent's job is
+  presentation, not new science. If the reviewer asks for missing data, simply
+  skip those points — do NOT add fabricated experiments, do NOT add a "future
+  work" item promising them.
+- **[IRON RULE] All numeric claims must match experimental_log.md.** The agent
+  cannot introduce new numbers, only re-present existing ones. Any number in
+  the revised paper that does not appear in experimental_log.md is a
+  hallucination.
 - **Never explicitly state a limitation.** The phrase "we acknowledge as a
   limitation that..." is forbidden. The model can address weaknesses
   through clearer explanation, but must not game the evaluator by listing
   them defensively.
-- **All numeric claims MUST be verified against `experimental_log.md`.**
-  The agent cannot introduce new numbers, only re-present existing ones.
 
 These rules prevent reward hacking and keep the refinement loop honest.
 
@@ -250,6 +283,13 @@ These rules prevent reward hacking and keep the refinement loop honest.
 - `references/reviewer-rubric.md` — AgentReview-style scoring rubric (6 axes)
 - `references/halt-rules.md` — accept/revert/halt logic in formal pseudocode
 - `references/safe-revision-rules.md` — anti-reward-hack constraints
+- `references/writing-quality-check.md` — 5-category anti-AI-prose checklist (pointer to shared)
+- `references/ai-failure-modes.md` — 7-mode integrity gate run before first iteration (pointer to shared)
+- `references/da-reviewer.md` — Devil's Advocate reviewer protocol and concession rules
 - `scripts/score_delta.py` — accept/revert decision from two score JSONs
+- `scripts/score_trajectory.py` — per-dimension score history, regression and plateau detection
 - `scripts/apply_worklog.py` — append iteration entries to worklog.json
 - `scripts/snapshot.py` — copy paper.tex/paper.pdf into iter<N>/ for rollback
+- `skills/shared/writing_quality_check.md` — full anti-AI-prose checklist (5 categories)
+- `skills/shared/ai_failure_modes.md` — full AI research failure modes gate (7 modes)
+- `skills/shared/handoff_schemas.md` — formal data contracts between all pipeline steps

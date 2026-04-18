@@ -1,6 +1,7 @@
 ---
 name: paper-orchestra
 description: Orchestrate the full PaperOrchestra (Song et al., 2026, arXiv:2604.05018) five-agent pipeline to turn unstructured research materials (idea, experimental log, LaTeX template, conference guidelines, optional figures) into a submission-ready LaTeX manuscript and compiled PDF. TRIGGER when the user asks to "write a paper from my experiments", "turn this idea and these results into a paper", "generate a conference submission", "run paper-orchestra on X", or otherwise wants the end-to-end paper-writing pipeline. Coordinates the outline-agent, plotting-agent, literature-review-agent, section-writing-agent, and content-refinement-agent skills.
+data_access_level: raw
 ---
 
 # paper-orchestra (Orchestrator)
@@ -63,13 +64,34 @@ it for fidelity *and* to keep generated papers grounded in the user's inputs.
 
 ## Step-by-step execution
 
-### 0. Scaffold and validate
+### 0. Pre-flight Checks
+
+Before running the pipeline, perform the following quality gates in order:
 
 ```bash
+# 1. Scaffold the workspace
 python skills/paper-orchestra/scripts/init_workspace.py --out workspace/
 # user drops their inputs into workspace/inputs/
+
+# 2. Validate required files are present and well-formed
 python skills/paper-orchestra/scripts/validate_inputs.py --workspace workspace/
+
+# 3. Check input density — idea and experimental log must meet minimum thresholds
+python skills/paper-orchestra/scripts/check_idea_density.py \
+    --idea workspace/inputs/idea.md \
+    --log workspace/inputs/experimental_log.md
+
+# 4. Cross-validate consistency between idea and experimental log
+python skills/paper-orchestra/scripts/validate_consistency.py \
+    --idea workspace/inputs/idea.md \
+    --log workspace/inputs/experimental_log.md
 ```
+
+If `validate_inputs.py` or `check_idea_density.py` fail (exit code 1 or 2), stop
+and tell the user what's missing or below threshold — do not proceed until fixed.
+
+`validate_consistency.py` produces warnings only (exit code 1 = WARN, non-blocking);
+report warnings to the user but continue.
 
 If validation fails, stop and tell the user what's missing.
 
