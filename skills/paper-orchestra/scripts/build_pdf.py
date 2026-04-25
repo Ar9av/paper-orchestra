@@ -3,10 +3,10 @@
 build_pdf.py — Fallback academic PDF builder (ReportLab).
 
 Converts a Markdown research paper into a two-column IEEE-style PDF with:
-  - Full-width title block + abstract on page 1, two-column body flows below
-    on the SAME page (no blank first page)
-  - Inline architecture diagram rendered as a styled table when the marker
-    <!-- ARCH_DIAGRAM --> appears in the markdown (or auto-inserted before §4)
+  - Full-width title + abstract on page 1 (proper IEEE layout, no blank first page)
+  - Two-column body starting below the abstract on the same page
+  - Architecture diagram auto-injected before §4 (or at <!-- ARCH_DIAGRAM -->)
+  - Clickable in-text citations [N] that jump to the reference entry
   - Prismor brand colours (slate / blue)
   - Header/footer with short title and page numbers
 
@@ -33,15 +33,14 @@ from reportlab.platypus import (
     Frame,
     HRFlowable,
     NextPageTemplate,
-    PageBreak,
     PageTemplate,
     Paragraph,
     Spacer,
     Table,
     TableStyle,
-    KeepTogether,
+    FrameBreak,
 )
-from reportlab.graphics.shapes import Drawing, Rect, String, Line
+from reportlab.platypus.flowables import AnchorFlowable
 
 # ── Page geometry ─────────────────────────────────────────────────────────────
 
@@ -52,11 +51,14 @@ M_LEFT   = 0.75 * inch
 M_RIGHT  = 0.75 * inch
 COL_GAP  = 0.25 * inch
 
-BODY_W   = PAGE_W - M_LEFT - M_RIGHT
-COL_W    = (BODY_W - COL_GAP) / 2
+BODY_W  = PAGE_W - M_LEFT - M_RIGHT
+COL_W   = (BODY_W - COL_GAP) / 2
+BODY_H  = PAGE_H - M_TOP - M_BOTTOM
 
-# Height reserved for title + abstract on page 1 (expands with content)
-TITLE_FRAME_H = 2.65 * inch
+# How much vertical space the title+abstract strip gets on page 1.
+# 4.5 in comfortably holds ~200-word abstract + title block.
+TITLE_STRIP_H = 4.5 * inch
+COL_H_P1      = BODY_H - TITLE_STRIP_H   # column height on page 1
 
 # ── Brand colours ─────────────────────────────────────────────────────────────
 
@@ -68,6 +70,7 @@ C_MUTED   = colors.HexColor("#64748b")
 C_BG_CODE = colors.HexColor("#f8fafc")
 C_BG_BOX  = colors.HexColor("#eff6ff")
 C_BOX_BDR = colors.HexColor("#bfdbfe")
+C_LINK    = colors.HexColor("#1d4ed8")
 
 # ── Styles ────────────────────────────────────────────────────────────────────
 
@@ -79,16 +82,16 @@ def make_styles() -> dict:
         ),
         "subtitle": ParagraphStyle(
             "PSub", fontName="Times-Italic", fontSize=9.5, leading=12,
-            textColor=C_MUTED, alignment=TA_CENTER, spaceAfter=3,
+            textColor=C_MUTED, alignment=TA_CENTER, spaceAfter=4,
         ),
         "abstract_h": ParagraphStyle(
             "PAbsH", fontName="Times-Bold", fontSize=9, leading=11,
-            textColor=C_NAVY, alignment=TA_CENTER, spaceBefore=4, spaceAfter=2,
+            textColor=C_NAVY, alignment=TA_CENTER, spaceBefore=2, spaceAfter=3,
         ),
         "abstract": ParagraphStyle(
-            "PAbs", fontName="Times-Roman", fontSize=8.5, leading=11,
+            "PAbs", fontName="Times-Roman", fontSize=8.5, leading=11.5,
             textColor=C_DARK, alignment=TA_JUSTIFY,
-            leftIndent=16, rightIndent=16, spaceAfter=0,
+            leftIndent=20, rightIndent=20, spaceAfter=4,
         ),
         "section": ParagraphStyle(
             "PSec", fontName="Times-Bold", fontSize=10, leading=13,
@@ -168,18 +171,18 @@ def build_doc(out_path: str, short_title: str) -> BaseDocTemplate:
 
     cb = lambda c, d: on_page(c, d, short_title)
 
-    body_h   = PAGE_H - M_TOP - M_BOTTOM
-    title_y  = PAGE_H - M_TOP - TITLE_FRAME_H        # bottom of title frame
-    col_h    = title_y - M_BOTTOM                    # height of column frames on page 1
+    # Page 1: full-width title+abstract strip at top, two columns below
+    title_y = PAGE_H - M_TOP - TITLE_STRIP_H   # y-coordinate (from bottom) of bottom of title frame
+    f_title = Frame(M_LEFT, title_y, BODY_W, TITLE_STRIP_H, id="title",
+                    showBoundary=0)
+    f_p1_l  = Frame(M_LEFT,                    M_BOTTOM, COL_W, COL_H_P1, id="p1_left",
+                    showBoundary=0)
+    f_p1_r  = Frame(M_LEFT + COL_W + COL_GAP,  M_BOTTOM, COL_W, COL_H_P1, id="p1_right",
+                    showBoundary=0)
 
-    # Page 1: title strip (full width) + two columns below, all on the same page
-    f_title = Frame(M_LEFT, title_y, BODY_W, TITLE_FRAME_H, id="title")
-    f_p1_l  = Frame(M_LEFT,          M_BOTTOM, COL_W, col_h, id="p1_left")
-    f_p1_r  = Frame(M_LEFT + COL_W + COL_GAP, M_BOTTOM, COL_W, col_h, id="p1_right")
-
-    # Page 2+: pure two-column
-    f_l = Frame(M_LEFT,          M_BOTTOM, COL_W, body_h, id="left")
-    f_r = Frame(M_LEFT + COL_W + COL_GAP, M_BOTTOM, COL_W, body_h, id="right")
+    # Pages 2+: pure two-column
+    f_l = Frame(M_LEFT,                   M_BOTTOM, COL_W, BODY_H, id="left",  showBoundary=0)
+    f_r = Frame(M_LEFT + COL_W + COL_GAP, M_BOTTOM, COL_W, BODY_H, id="right", showBoundary=0)
 
     pt_first  = PageTemplate(id="First",  frames=[f_title, f_p1_l, f_p1_r], onPage=cb)
     pt_twocol = PageTemplate(id="TwoCol", frames=[f_l, f_r],                 onPage=cb)
@@ -191,78 +194,64 @@ def build_doc(out_path: str, short_title: str) -> BaseDocTemplate:
 # ── Architecture diagram ──────────────────────────────────────────────────────
 
 def make_arch_diagram(styles: dict, col_width: float) -> list:
-    """
-    Render the Prismor three-layer architecture as a styled ReportLab Table
-    that fits inside a single column width.
-    """
     S = styles
-    W = col_width - 4  # slight inset
-
-    # Row data: each cell is a Paragraph or string
-    def box(title, lines, bg=C_BG_BOX, bdr=C_BOX_BDR):
-        content = [Paragraph(title, S["diagram_label"])]
-        for l in lines:
-            content.append(Paragraph(l, S["diagram_body"]))
-        return content
-
-    warden_lines = [
-        "PreToolUse / PostToolUse hooks",
-        "YAML policy engine  •  25+ rules",
-        "Shell · File · Network · MCP · Prompt",
-        "Observe mode  |  Enforce mode",
-        "SQLite + JSONL audit trail",
-    ]
-    sweep_lines = [
-        "Gitleaks-powered residue scan",
-        "AI tool caches: Claude · Cursor · Windsurf",
-        "AES-256-CBC vault  •  Redact / Restore",
-        "Run on-demand or via Stop hook",
-    ]
-    cloak_lines = [
-        "@@SECRET:name@@ placeholder convention",
-        "PreToolUse: decloak at execution time",
-        "sed-wrap scrubs stdout before recording",
-        "UserPromptSubmit: auto-detects pasted keys",
-        "PostToolUse: scrubs MCP responses",
-    ]
+    W = col_width - 8
 
     def cell(title, lines, bg):
-        inner = [[Paragraph(title, S["diagram_label"])]] + \
-                [[Paragraph(l, S["diagram_body"])] for l in lines]
-        t = Table(inner, colWidths=[W - 12])
+        rows = [[Paragraph(title, S["diagram_label"])]] + \
+               [[Paragraph(l, S["diagram_body"])] for l in lines]
+        t = Table(rows, colWidths=[W - 12])
         t.setStyle(TableStyle([
-            ("BACKGROUND",  (0, 0), (0, 0), bg),
-            ("BACKGROUND",  (0, 1), (-1, -1), colors.white),
-            ("BOX",         (0, 0), (-1, -1), 0.75, C_BOX_BDR),
-            ("INNERGRID",   (0, 0), (-1, -1), 0.3, C_RULE),
-            ("TOPPADDING",  (0, 0), (-1, -1), 2),
-            ("BOTTOMPADDING",(0,0), (-1, -1), 2),
-            ("LEFTPADDING", (0, 0), (-1, -1), 4),
-            ("RIGHTPADDING",(0, 0), (-1, -1), 4),
+            ("BACKGROUND",   (0, 0), (0, 0),  bg),
+            ("BACKGROUND",   (0, 1), (-1, -1), colors.white),
+            ("BOX",          (0, 0), (-1, -1), 0.75, C_BOX_BDR),
+            ("INNERGRID",    (0, 0), (-1, -1), 0.3,  C_RULE),
+            ("TOPPADDING",   (0, 0), (-1, -1), 2),
+            ("BOTTOMPADDING",(0, 0), (-1, -1), 2),
+            ("LEFTPADDING",  (0, 0), (-1, -1), 4),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 4),
         ]))
         return t
 
-    warden_cell = cell("Warden — Runtime Monitor",  warden_lines, colors.HexColor("#dbeafe"))
-    sweep_cell  = cell("Sweep — Secret Cleanup",    sweep_lines,  colors.HexColor("#dcfce7"))
-    cloak_cell  = cell("Cloak — Secret Prevention", cloak_lines,  colors.HexColor("#fef9c3"))
+    warden = cell("Warden: Runtime Monitor", [
+        "PreToolUse / PostToolUse hooks",
+        "YAML policy engine  •  25+ rules",
+        "Shell  •  File  •  Network  •  MCP  •  Prompt",
+        "Observe mode  |  Enforce mode",
+        "SQLite + JSONL audit trail",
+    ], colors.HexColor("#dbeafe"))
 
-    # Agent row at top
-    agent_row = Table(
-        [[Paragraph("IDE / Agent\n(Claude Code · Cursor · Windsurf)", S["diagram_body"])]],
+    cloak = cell("Cloak: Secret Prevention", [
+        "@@SECRET:name@@ placeholder convention",
+        "PreToolUse: decloak at execution time",
+        "sed-wrap scrubs stdout before recording",
+        "UserPromptSubmit: intercepts pasted keys",
+        "PostToolUse: scrubs MCP responses",
+    ], colors.HexColor("#fef9c3"))
+
+    sweep = cell("Sweep: Secret Cleanup", [
+        "Gitleaks-powered residue scan",
+        "Claude  •  Cursor  •  Windsurf caches",
+        "AES-256-CBC vault  •  Redact / Restore",
+        "Run on-demand or via Stop hook",
+    ], colors.HexColor("#dcfce7"))
+
+    agent_box = Table(
+        [[Paragraph("IDE / Agent  (Claude Code  •  Cursor  •  Windsurf)", S["diagram_body"])]],
         colWidths=[W - 12],
     )
-    agent_row.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#f1f5f9")),
-        ("BOX",        (0, 0), (-1, -1), 1.0, C_NAVY),
-        ("ALIGN",      (0, 0), (-1, -1), "CENTER"),
-        ("TOPPADDING", (0, 0), (-1, -1), 3),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+    agent_box.setStyle(TableStyle([
+        ("BACKGROUND",   (0, 0), (-1, -1), colors.HexColor("#f1f5f9")),
+        ("BOX",          (0, 0), (-1, -1), 1.0, C_NAVY),
+        ("ALIGN",        (0, 0), (-1, -1), "CENTER"),
+        ("TOPPADDING",   (0, 0), (-1, -1), 3),
+        ("BOTTOMPADDING",(0, 0), (-1, -1), 3),
     ]))
 
-    arrow = Paragraph("↓  PreToolUse / PostToolUse hooks  ↓", S["diagram_body"])
+    arrow = Paragraph("hooks", S["diagram_body"])
 
     outer = Table(
-        [[agent_row], [arrow], [warden_cell], [arrow], [cloak_cell], [arrow], [sweep_cell]],
+        [[agent_box], [arrow], [warden], [arrow], [cloak], [arrow], [sweep]],
         colWidths=[W],
     )
     outer.setStyle(TableStyle([
@@ -278,8 +267,8 @@ def make_arch_diagram(styles: dict, col_width: float) -> list:
         Spacer(1, 6),
         outer,
         Paragraph(
-            "Figure 1. Prismor Immunity Agent — three-layer defense architecture.",
-            styles["diagram_caption"],
+            "Figure 1. Prismor Immunity Agent: three-layer defense architecture.",
+            S["diagram_caption"],
         ),
         Spacer(1, 4),
     ]
@@ -287,17 +276,20 @@ def make_arch_diagram(styles: dict, col_width: float) -> list:
 
 # ── Inline markdown → ReportLab XML ──────────────────────────────────────────
 
-def md_inline(text: str) -> str:
+# Citation pattern: [1], [1, 2], [1–3] etc.
+_CIT_RE = re.compile(r'\[(\d[\d,\s\-–]*\d|\d)\]')
+
+def md_inline(text: str, linkify_cites: bool = False) -> str:
     """
     Convert inline markdown to ReportLab paragraph XML.
-    Processes backtick code spans first to avoid italic regex firing on
-    underscores inside code text (e.g. LD_PRELOAD, NODE_OPTIONS).
+    Backtick spans processed first to prevent italic regex firing on
+    underscores inside code text (LD_PRELOAD, NODE_OPTIONS, etc.).
+    If linkify_cites=True, [N] patterns become internal hyperlinks.
     """
     parts = re.split(r'`([^`]+)`', text)
     out = []
     for idx, part in enumerate(parts):
         if idx % 2 == 1:
-            # Inside backtick span — XML-escape only, no further markdown
             safe = (part.replace("&", "&amp;")
                         .replace("<", "&lt;")
                         .replace(">", "&gt;"))
@@ -306,43 +298,72 @@ def md_inline(text: str) -> str:
             safe = (part.replace("&", "&amp;")
                         .replace("<", "&lt;")
                         .replace(">", "&gt;"))
-            # Links: keep display text only
             safe = re.sub(r'\[([^\]]+)\]\([^\)]+\)', r'\1', safe)
-            # Bold-italic
             safe = re.sub(r'\*\*\*(.+?)\*\*\*', r'<b><i>\1</i></b>', safe)
-            # Bold
             safe = re.sub(r'\*\*(.+?)\*\*', r'<b>\1</b>', safe)
-            # Italic (asterisk form only — avoid matching asterisks in bullets)
             safe = re.sub(r'(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)', r'<i>\1</i>', safe)
+            if linkify_cites:
+                # Link [N] → #ref_N  and  [N, M] → links for each number
+                def _link_cit(m):
+                    raw = m.group(0)       # e.g. "[1, 3]"
+                    nums = re.findall(r'\d+', raw)
+                    if len(nums) == 1:
+                        n = nums[0]
+                        return (f'<link href="#ref_{n}" '
+                                f'color="{C_LINK.hexval()}">{raw}</link>')
+                    # Multiple numbers: link each individually
+                    inner = ", ".join(
+                        f'<link href="#ref_{n}" color="{C_LINK.hexval()}">{n}</link>'
+                        for n in nums
+                    )
+                    return f"[{inner}]"
+                safe = _CIT_RE.sub(_link_cit, safe)
             out.append(safe)
     return "".join(out)
+
+
+# ── Abstract extraction ───────────────────────────────────────────────────────
+
+def extract_abstract(md_text: str) -> str:
+    """Pull the abstract block out of the markdown. Returns plain text."""
+    lines = md_text.splitlines()
+    in_abs = False
+    buf = []
+    for line in lines:
+        if line.startswith("## ") and line[3:].strip().lower() == "abstract":
+            in_abs = True
+            continue
+        if in_abs:
+            if line.startswith("## "):   # next section
+                break
+            if line.strip() in ("---", "***", "___"):
+                break
+            buf.append(line.strip())
+    return " ".join(b for b in buf if b)
 
 
 # ── Markdown → flowable list ──────────────────────────────────────────────────
 
 def parse_markdown(md_text: str, styles: dict, col_width: float,
-                   inject_diagram: bool = True) -> list:
+                   inject_diagram: bool = True,
+                   skip_abstract: bool = False) -> list:
+    """
+    Parse markdown into ReportLab flowables.
+    skip_abstract=True: skip the ## Abstract section (already in title block).
+    """
     lines = md_text.splitlines()
     S = styles
     flowables = []
 
     in_abstract = False
     in_refs = False
-    abstract_buf: list[str] = []
     diagram_injected = False
-
-    def flush_abstract():
-        nonlocal abstract_buf
-        text = " ".join(abstract_buf).strip()
-        if text:
-            flowables.append(Paragraph(md_inline(text), S["abstract"]))
-        abstract_buf = []
 
     i = 0
     while i < len(lines):
         line = lines[i]
 
-        # H1 title — skip (rendered in title block separately)
+        # H1 title — skip (rendered in title block)
         if line.startswith("# ") and not line.startswith("## "):
             i += 1
             continue
@@ -369,27 +390,33 @@ def parse_markdown(md_text: str, styles: dict, col_width: float,
             i += 1
             continue
 
-        # H2 section heading
+        # H2 section
         if line.startswith("## "):
-            if in_abstract:
-                flush_abstract()
-                in_abstract = False
             txt = line[3:].strip()
+
             if txt.lower() == "abstract":
-                in_abstract = True
-                in_refs = False
-                flowables.append(Paragraph("Abstract", S["abstract_h"]))
-                i += 1
-                continue
+                if skip_abstract:
+                    in_abstract = True
+                    i += 1
+                    continue
+                else:
+                    in_abstract = False
+                    flowables.append(Paragraph("Abstract", S["abstract_h"]))
+                    i += 1
+                    continue
+
+            # Leaving abstract
+            in_abstract = False
+
             if txt.lower().startswith("reference"):
                 in_refs = True
             else:
                 in_refs = False
 
-            # Auto-inject diagram before section 4 if not yet inserted
+            # Auto-inject diagram before §4
             if inject_diagram and not diagram_injected:
-                num_match = re.match(r'^(\d+)\.', txt)
-                if num_match and int(num_match.group(1)) >= 4:
+                m = re.match(r'^(\d+)\.', txt)
+                if m and int(m.group(1)) >= 4:
                     flowables.extend(make_arch_diagram(S, col_width))
                     diagram_injected = True
 
@@ -399,9 +426,7 @@ def parse_markdown(md_text: str, styles: dict, col_width: float,
 
         # H3 subsection
         if line.startswith("### "):
-            if in_abstract:
-                flush_abstract()
-                in_abstract = False
+            in_abstract = False
             txt = line[4:].strip()
             flowables.append(Paragraph(md_inline(txt), S["subsection"]))
             i += 1
@@ -414,38 +439,40 @@ def parse_markdown(md_text: str, styles: dict, col_width: float,
             i += 1
             continue
 
+        # Skip abstract lines when skip_abstract is True
+        if in_abstract and skip_abstract:
+            if line.startswith("## "):
+                in_abstract = False
+                continue   # re-process this line
+            i += 1
+            continue
+
         # Blank line
         if not line.strip():
-            if in_abstract and abstract_buf:
-                flush_abstract()
             i += 1
             continue
 
         # Bullet
         if line.strip().startswith(("- ", "* ", "• ")):
-            if in_abstract:
-                flush_abstract()
-                in_abstract = False
+            in_abstract = False
             txt = re.sub(r'^[\s\-\*•]+', '', line)
-            flowables.append(Paragraph("• " + md_inline(txt), S["bullet"]))
+            flowables.append(Paragraph("• " + md_inline(txt, linkify_cites=True),
+                                       S["bullet"]))
             i += 1
             continue
 
         # Numbered list
         if re.match(r'^\d+\.\s', line.strip()):
-            if in_abstract:
-                flush_abstract()
-                in_abstract = False
+            in_abstract = False
             txt = re.sub(r'^\d+\.\s+', '', line.strip())
-            flowables.append(Paragraph("• " + md_inline(txt), S["bullet"]))
+            flowables.append(Paragraph("• " + md_inline(txt, linkify_cites=True),
+                                       S["bullet"]))
             i += 1
             continue
 
         # Fenced code block
         if line.strip().startswith("```"):
-            if in_abstract:
-                flush_abstract()
-                in_abstract = False
+            in_abstract = False
             i += 1
             code_lines = []
             while i < len(lines) and not lines[i].strip().startswith("```"):
@@ -455,7 +482,7 @@ def parse_markdown(md_text: str, styles: dict, col_width: float,
                            .replace(">", "&gt;"))
                 code_lines.append(escaped)
                 i += 1
-            i += 1  # skip closing ```
+            i += 1
             if code_lines:
                 xml = "<br/>".join(
                     f'<font name="Courier" size="7">{l}</font>'
@@ -464,45 +491,44 @@ def parse_markdown(md_text: str, styles: dict, col_width: float,
                 flowables.append(Paragraph(xml, S["code"]))
             continue
 
-        # Reference line [N] ...
+        # Reference line: [N] Author...
         if in_refs and re.match(r'^\[(\d+)\]', line.strip()):
+            m = re.match(r'^\[(\d+)\]', line.strip())
+            ref_n = m.group(1)
+            # Insert an anchor so citations can jump here
+            flowables.append(AnchorFlowable(f"ref_{ref_n}"))
             flowables.append(Paragraph(md_inline(line.strip()), S["ref"]))
             i += 1
             continue
 
-        # Abstract accumulation
-        if in_abstract:
-            abstract_buf.append(line.strip())
-            i += 1
-            continue
-
-        # Normal body paragraph
-        if line.strip():
-            flowables.append(Paragraph(md_inline(line.strip()), S["body"]))
+        # Normal body text
+        if line.strip() and not in_abstract:
+            flowables.append(Paragraph(md_inline(line.strip(), linkify_cites=True),
+                                       S["body"]))
         i += 1
-
-    if abstract_buf:
-        flush_abstract()
 
     return flowables
 
 
-# ── Title block (goes into the full-width title frame on page 1) ──────────────
+# ── Title block (fills the full-width title frame on page 1) ─────────────────
 
-def build_title_block(styles: dict, title_text: str) -> list:
+def build_title_block(styles: dict, title_text: str, abstract_text: str) -> list:
     S = styles
-    return [
+    flows = [
         Spacer(1, 0.08 * inch),
         Paragraph(md_inline(title_text), S["title"]),
         Spacer(1, 0.04 * inch),
         HRFlowable(width="55%", thickness=1.5, color=C_BLUE,
                    hAlign="CENTER", spaceBefore=2, spaceAfter=3),
-        Paragraph(
-            "Prismor Security · Technical Report, April 2026",
-            S["subtitle"],
-        ),
-        Spacer(1, 0.05 * inch),
+        Paragraph("Prismor Security  ·  Technical Report, April 2026", S["subtitle"]),
     ]
+    if abstract_text:
+        flows += [
+            Paragraph("Abstract", S["abstract_h"]),
+            Paragraph(md_inline(abstract_text), S["abstract"]),
+        ]
+    flows += [Spacer(1, 0.06 * inch)]
+    return flows
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
@@ -510,13 +536,13 @@ def build_title_block(styles: dict, title_text: str) -> list:
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--input",      required=True, help="Input Markdown file")
-    p.add_argument("--output",     required=True, help="Output PDF path")
-    p.add_argument("--title",      default=None,
+    p.add_argument("--input",       required=True, help="Input Markdown file")
+    p.add_argument("--output",      required=True, help="Output PDF path")
+    p.add_argument("--title",       default=None,
                    help="Full paper title (read from first # heading if omitted)")
     p.add_argument("--title-short", dest="title_short", default=None,
-                   help="Short title for header (truncated from --title if omitted)")
-    p.add_argument("--no-diagram", dest="no_diagram", action="store_true",
+                   help="Short title for header")
+    p.add_argument("--no-diagram",  dest="no_diagram", action="store_true",
                    help="Skip auto-inserting the architecture diagram")
     args = p.parse_args()
 
@@ -527,34 +553,40 @@ def main() -> int:
 
     md_text = md_path.read_text(encoding="utf-8")
 
-    # Extract title from first H1 if not supplied
+    # Extract title
     title = args.title
     if not title:
         m = re.search(r'^# (.+)', md_text, re.MULTILINE)
         title = m.group(1).strip() if m else md_path.stem
 
-    short_title = args.title_short or (title[:60] + "…" if len(title) > 60 else title)
+    short_title = args.title_short or (title[:60] + "..." if len(title) > 60 else title)
 
-    styles  = make_styles()
-    doc     = build_doc(args.output, short_title)
+    # Extract abstract separately so it goes into the full-width title frame
+    abstract_text = extract_abstract(md_text)
 
-    title_block  = build_title_block(styles, title)
-    body_flows   = parse_markdown(
-        md_text, styles, col_width=COL_W,
-        inject_diagram=not args.no_diagram,
-    )
+    styles = make_styles()
+    doc    = build_doc(args.output, short_title)
 
-    # Story: title block fills the title frame, then body flows into the
-    # two column frames below — all on page 1, no blank first page.
-    story = (
-        title_block
+    # Title block (full-width): title + abstract
+    title_block = build_title_block(styles, title, abstract_text)
+
+    # Body flowables: skip the abstract (already in title block)
+    # FrameBreak pushes remaining title-frame space into the two-column area
+    body_flows = (
+        [FrameBreak()]   # end title frame, start left column on page 1
         + [NextPageTemplate("TwoCol")]
-        + body_flows
+        + parse_markdown(
+            md_text, styles, col_width=COL_W,
+            inject_diagram=not args.no_diagram,
+            skip_abstract=True,
+        )
     )
 
+    story = title_block + body_flows
     doc.build(story)
+
     size_kb = Path(args.output).stat().st_size // 1024
-    print(f"PDF written → {args.output}  ({size_kb} KB, page size: letter)")
+    print(f"PDF written: {args.output}  ({size_kb} KB)")
     return 0
 
 
