@@ -1,0 +1,541 @@
+{
+  "plotting_plan": [
+    {
+      "figure_id": "fig_competitive_positioning_map",
+      "title": "Competitive Positioning Map: Specificity vs. Runtime Enforcement",
+      "plot_type": "diagram",
+      "data_source": "experimental_log.md",
+      "objective": "Visual summary (2D Scatter Diagram) placing 12 vendors on axes of x=specificity to AI coding agents and y=runtime enforcement level, demonstrating Prismor's unique position in the upper-right quadrant with both high agent specificity and runtime enforcement.",
+      "aspect_ratio": "4:3"
+    },
+    {
+      "figure_id": "fig_market_growth_gen_ai_cybersecurity",
+      "title": "Generative AI in Cybersecurity Market Growth 2025-2031",
+      "plot_type": "plot",
+      "data_source": "experimental_log.md",
+      "objective": "Visual summary (Bar/Line Combo Chart) showing Gen AI cybersecurity market expansion from $8.65B (2025) to $35.5B (2031) at 26.5% CAGR (MarketsandMarkets), alongside the $25.5B broad AI cybersecurity market (2026), establishing the market opportunity context for Prismor.",
+      "aspect_ratio": "16:9"
+    },
+    {
+      "figure_id": "fig_threat_incident_timeline",
+      "title": "Documented AI Coding Agent Security Incidents (2025-2026)",
+      "plot_type": "diagram",
+      "data_source": "experimental_log.md",
+      "objective": "Visual summary (Horizontal Timeline Diagram) of 11 documented incidents from March 2025 through April 2026, annotated with attack vector category and severity level, demonstrating the accelerating cadence and escalating severity of agentic security breaches.",
+      "aspect_ratio": "16:9"
+    },
+    {
+      "figure_id": "fig_capability_coverage_heatmap",
+      "title": "Vendor Capability Coverage Matrix Heatmap",
+      "plot_type": "diagram",
+      "data_source": "experimental_log.md",
+      "objective": "Visual summary (Color-Coded Heatmap/Table Diagram) mapping 12 vendors against 7 capability dimensions (Claude Code Hook, Secrets Cloaking, Post-hoc Sweep, MCP Detection, Air-gap/Local, Policy-as-Code, OWASP Coverage), with YES/Partial/NO cells color-coded green/yellow/red to reveal capability gaps across the competitive landscape.",
+      "aspect_ratio": "4:3"
+    },
+    {
+      "figure_id": "fig_prismor_system_architecture",
+      "title": "Prismor Defense-in-Depth Architecture: Three-Layer Stack",
+      "plot_type": "diagram",
+      "data_source": "idea.md",
+      "objective": "Visual summary (Layered Architecture Block Diagram) of the Prismor three-layer defense stack showing Layer 1 Cloak (PreToolUse/PostToolUse hooks, secret substitution, UserPromptSubmit detection), Layer 2 Warden (hook-layer YAML policy engine, 25+ rules, observe/enforce modes, JSONL+SQLite audit), and Layer 3 Sweep (Gitleaks 170+ patterns, redact/delete/dry-run modes) with the Immunity Feed providing signed threat intelligence across all three layers.",
+      "aspect_ratio": "4:3"
+    },
+    {
+      "figure_id": "fig_secrets_leakage_comparison",
+      "title": "AI-Assisted vs. Human Commit Secret Leak Rates",
+      "plot_type": "plot",
+      "data_source": "experimental_log.md",
+      "objective": "Visual summary (Grouped Bar Chart) comparing secret leak rates: Claude Code-assisted commits at 3.2% vs. human baseline at 1.5% (2.13x multiplier), alongside 28.65M total hardcoded secrets on public GitHub in 2025 (+34% YoY) and 1,275,105 AI service credentials exposed (+81% YoY), from GitGuardian State of Secrets Sprawl 2026.",
+      "aspect_ratio": "3:2"
+    }
+  ],
+  "intro_related_work_plan": {
+    "introduction_strategy": {
+      "hook_hypothesis": "AI coding agents (Claude Code, Cursor, Windsurf, GitHub Copilot) have become the dominant software development paradigm in 2025-2026, but their broad filesystem access, arbitrary shell execution, and credential store access have created an acute, documented security threat that traditional controls — kernel-level eBPF hooks, cloud DLP, static secret scanners — are architecturally incapable of addressing.",
+      "problem_gap_hypothesis": "The semantic gap between when an AI agent decides to issue a tool call and when the OS executes it means that all kernel-level and proxy-based security controls intervene too late; the only architecturally sound interception point is the agent's own hook layer, yet no existing commercial or open-source tool provides the three-layer defense-in-depth composition (pre-emptive cloaking + runtime enforcement + post-hoc sweep) that covers the full threat lifecycle of AI coding agent attacks.",
+      "search_directions": [
+        "Find highly cited foundational papers on LLM application security, prompt injection taxonomies, and OWASP Top 10 for LLMs (published before April 2026)",
+        "Search for systematic surveys of AI agent attack surfaces, agentic threat taxonomies, and multi-agent security (e.g., AgentTower arXiv:2603.11088)",
+        "Identify empirical studies quantifying secrets leakage rates in AI-assisted code commits and GitHub credential exposure statistics (GitGuardian State of Secrets Sprawl 2026)",
+        "Find papers establishing Model Context Protocol (MCP) security vulnerabilities, supply chain threats, and tool poisoning attack mechanics",
+        "Search for academic work on runtime enforcement architectures for LLM agents (ClawGuard, AgentSpec, ICON, AttriGuard, AgentSentry published 2025-2026)",
+        "Identify foundational papers on hook-layer interception vs. OS-level security controls and their semantic gap limitations",
+        "Find papers characterizing prompt injection attack success rates against current defenses (Maloyan & Namiot arXiv:2601.17548, 78 studies)",
+        "Search for industry reports on AI coding agent market growth, enterprise adoption rates, and developer security tooling spend (MarketsandMarkets, Gartner, Forrester)"
+      ]
+    },
+    "related_work_strategy": {
+      "overview": "Investigate four distinct methodology clusters to establish the technical baseline and prove that each existing approach addresses only a subset of the AI coding agent threat lifecycle, motivating the necessity of Prismor's three-layer defense-in-depth composition.",
+      "subsections": [
+        {
+          "subsection_title": "3.2 Runtime Enforcement Systems for LLM Agents",
+          "methodology_cluster": "Hook-Layer and Policy-Based Runtime Interception",
+          "sota_investigation_mission": "Identify current SOTA runtime enforcement systems (ClawGuard arXiv:2604.11790, AgentSpec arXiv:2503.18666/ICSE 2026, AttriGuard arXiv:2603.10749, ICON arXiv:2602.20708, AgentSentry arXiv:2602.22724). Determine their attack success rates, supported LLMs, and enforcement overhead. Establish whether any operates at the agent hook layer specifically for Claude Code/Cursor/Windsurf.",
+          "limitation_hypothesis": "Existing runtime enforcement systems either operate at the latent/model layer (ICON, AgentSentry) with no policy programmability, or provide static rule engines without pre-emptive secrets cloaking or post-hoc remediation, leaving the full threat lifecycle partially covered. None are deployed as a developer-native tool integrated with Claude Code's PreToolUse/PostToolUse hook protocol.",
+          "limitation_search_queries": [
+            "ClawGuard hook-layer tool-call boundary enforcement overhead benchmark",
+            "AgentSpec YAML policy DSL enforcement completeness multi-agent",
+            "ICON latent space injection detection false positive rate developer workflow",
+            "AttriGuard causal attribution tool invocation security gap analysis",
+            "AgentSentry temporal causal injection multi-turn session limitation",
+            "Runtime LLM security enforcement agent hook vs. OS kernel comparison"
+          ],
+          "bridge_to_our_method": "Prismor Warden operates at the identical hook-layer interception point as ClawGuard but adds a YAML policy-as-code engine (25+ rules, 10 categories) deployable by any Claude Code user without model modification, paired with Cloak and Sweep to cover the full threat lifecycle that runtime enforcement alone cannot address."
+        },
+        {
+          "subsection_title": "3.3 MCP and AI Supply Chain Security",
+          "methodology_cluster": "Model Context Protocol Security and Tool Ecosystem Threats",
+          "sota_investigation_mission": "Identify documented MCP vulnerabilities (tool poisoning, rug-pull attacks, unauthenticated admin panels, by-design RCE in 150M+ SDK downloads). Determine the state of MCP-specific security tooling (MCP-Scan, Invariant Labs/Snyk CLI). Quantify the attack surface: 7,000+ publicly accessible MCP servers, 8,000+ with unauthenticated panels, 1,184 confirmed malicious skills.",
+          "limitation_hypothesis": "Current MCP security tools (MCP-Scan, Snyk/Invariant CLI) provide static scanning of MCP server descriptions but lack runtime interception of tool-call execution, cannot detect dynamic rug-pull attacks where tool descriptions change post-installation, and do not integrate with secrets cloaking or post-hoc sweep for the credentials exfiltrated via MCP tool calls.",
+          "limitation_search_queries": [
+            "MCP tool poisoning runtime detection vs. static scan limitation",
+            "Model Context Protocol rug-pull attack defense mechanism",
+            "MCP-Scan false negative rate dynamic tool description poisoning",
+            "SANDWORM_MODE npm MCP injection supply chain detection gap",
+            "MCP server authentication vulnerability unauthenticated admin panel CVE"
+          ],
+          "bridge_to_our_method": "Prismor Warden's MCP/skill scanner detection category provides runtime interception of MCP tool calls at the PreToolUse hook, catching dynamic poisoning that static scanners miss, while the Immunity Feed's 217 advisories include MCP-related CVE mappings for real-time correlation."
+        },
+        {
+          "subsection_title": "3.4 Secrets and Credential Leakage in AI-Assisted Development",
+          "methodology_cluster": "Pre-emptive Cloaking and Post-Hoc Secret Remediation",
+          "sota_investigation_mission": "Identify empirical studies on credential leakage in LLM agent workflows (Chen et al. arXiv:2604.03070: 17,022 skills, 520 vulnerable, 89.6% immediately exploitable). Determine baseline tools (Gitleaks, TruffleHog, GitGuardian) and their limitations in agentic contexts. Establish the gap between static secret scanning and pre-emptive placeholder substitution before model context ingestion.",
+          "limitation_hypothesis": "Existing secret detection tools (Gitleaks, TruffleHog, GitGuardian) operate post-hoc on committed code or network traffic, cannot prevent secrets from entering model context (transcripts, API logs, JSONL session files), and do not provide pre-emptive substitution that eliminates the semantic signal before the model processes it. The 3.2% Claude Code leak rate vs. 1.5% baseline confirms that AI-generated commits are systematically more risky.",
+          "limitation_search_queries": [
+            "Gitleaks TruffleHog secret scanner limitation AI session transcript",
+            "LLM agent credential leakage JSONL transcript post-hoc remediation gap",
+            "Pre-emptive secret substitution vs. reactive scanning comparison AI coding",
+            "GitHub hardcoded secrets AI-assisted commit rate empirical study 2025 2026",
+            "GitGuardian secrets sprawl AI coding agent leak rate multiplier"
+          ],
+          "bridge_to_our_method": "Prismor Cloak eliminates the root cause by ensuring real secret values never enter model context via @@SECRET:<name>@@ placeholder substitution with PreToolUse/PostToolUse hooks, while Prismor Sweep applies Gitleaks' 170+ patterns retroactively to Claude/Cursor/Windsurf cache directories with AES-256-CBC vault backup for recovery provenance."
+        },
+        {
+          "subsection_title": "3.5 AI Coding Agent Threat Taxonomy and Attack Landscape",
+          "methodology_cluster": "Systematic Attack Taxonomy and Empirical Threat Characterization",
+          "sota_investigation_mission": "Identify comprehensive taxonomies of AI coding agent attacks (AgentTower arXiv:2603.11088, Maloyan & Namiot arXiv:2601.17548 with 78 studies and 42 techniques). Determine documented attack categories: prompt injection, rules-file backdoor, tool poisoning, credential exfiltration, privilege escalation, supply chain. Establish baseline attack success rates against current defenses (>85% adaptive prompt injection).",
+          "limitation_hypothesis": "Existing threat taxonomies provide attack characterization without corresponding defense architectures deployable in production developer environments; the 85%+ adaptive prompt injection success rate against current defenses and documented incidents (Rules File Backdoor March 2025, MCP Tool Poisoning April 2025, Claude Code hook injection CVE-2025-59536) demonstrate that taxonomic understanding has not translated into effective mitigations at the agent layer.",
+          "limitation_search_queries": [
+            "AI coding agent prompt injection taxonomy attack success rate empirical 2025 2026",
+            "Rules file backdoor Unicode poisoning Cursor Copilot defense mechanism",
+            "AgentTower attack defense landscape survey AI coding agent taxonomy",
+            "Adaptive prompt injection evasion current defense bypass rate",
+            "CVE-2025-59536 Claude Code hook injection settings.json exploit defense"
+          ],
+          "bridge_to_our_method": "Prismor Warden's 25+ detection rules across 10 categories (destructive commands, secret exfiltration, remote code execution, prompt injection, privilege escalation, denial-of-service, persistence mechanisms, DNS exfiltration, MCP/skill scanner, network isolation) directly operationalize the AgentTower taxonomy into non-overridable critical enforcement rules at the agent hook layer."
+        }
+      ]
+    }
+  },
+  "section_plan": [
+    {
+      "section_title": "Abstract",
+      "subsections": [
+        {
+          "subsection_title": "Abstract: Problem, Approach, and Contributions",
+          "content_bullets": [
+            "State the problem: AI coding agents (Claude Code, Cursor, Windsurf, GitHub Copilot) are granted broad filesystem access and arbitrary shell execution, creating a new attack surface that traditional security controls (eBPF hooks, cloud DLP, static scanners) cannot address due to the semantic gap at the OS layer.",
+            "Introduce the approach: Prismor's three-layer defense-in-depth architecture — Cloak (pre-emptive secrets substitution), Warden (hook-layer runtime enforcement with 25+ YAML policy rules), and Sweep (post-hoc Gitleaks-based remediation) — intercepting at the agent's PreToolUse/PostToolUse hook layer before OS execution.",
+            "State key quantitative findings: 28.65M hardcoded secrets leaked on public GitHub in 2025 (+34% YoY); Claude Code-assisted commits leak at 3.2% vs. 1.5% baseline (2.13x); >85% adaptive prompt injection success rate against current defenses; 11 documented critical incidents from March 2025 to April 2026.",
+            "State the main contribution: first formal characterization of the AI coding agent threat surface, first three-layer defense-in-depth composition covering the full threat lifecycle, competitive analysis showing no existing vendor covers all three layers, and market sizing of $72M+ ARR opportunity in developer-native agentic security."
+          ],
+          "citation_hints": [
+            "research paper or technical report introducing 'GitGuardian State of Secrets Sprawl 2026'",
+            "Maloyan & Namiot (research paper on prompt injection on agentic coding assistants, arXiv:2601.17548)",
+            "research paper or technical report introducing 'AgentTower: Attack/Defense Landscape Survey' (arXiv:2603.11088)"
+          ]
+        },
+        {
+          "subsection_title": "Abstract: Key Statistics and Market Context",
+          "content_bullets": [
+            "Quantify the threat scale from experimental_log.md: 28.65M hardcoded secrets on public GitHub in 2025 (GitGuardian), 1,275,105 AI service credentials exposed (+81% YoY), Claude Code commit leak rate 3.2% vs. 1.5% human baseline, 150M+ MCP SDK downloads affected by by-design RCE.",
+            "Establish the market context: Gen AI in Cybersecurity growing from $8.65B (2025) to $35.5B (2031) at 26.5% CAGR (MarketsandMarkets); four major acquisitions (Invariant→Snyk, Protect AI→Palo Alto, Robust Intelligence→Cisco) confirming incumbent demand for AI-native security.",
+            "Scope the paper: 250-350 words, single-column article format per conference_guidelines.md; targets enterprise security buyers, investors, and security researchers evaluating AI coding agent security tooling."
+          ],
+          "citation_hints": [
+            "research paper or technical report introducing 'MarketsandMarkets Gen AI in Cybersecurity 2025-2031 report'",
+            "research paper or technical report introducing 'GitGuardian State of Secrets Sprawl 2026'"
+          ]
+        }
+      ]
+    },
+    {
+      "section_title": "1. Introduction",
+      "subsections": [
+        {
+          "subsection_title": "1.1 The New Attack Surface: AI Coding Agents in Production",
+          "content_bullets": [
+            "Establish that AI coding agents are the dominant software development paradigm in 2025-2026 — Claude Code, Cursor, Windsurf, GitHub Copilot — citing adoption statistics and capability scope (filesystem access, shell execution, credential store interaction, MCP service integration).",
+            "Characterize the unique threat model: agents are granted the same privileges as the developer, operate with broad ambient authority, and make tool-call decisions before OS-level hooks can intervene — cite idea.md's framing of the semantic gap.",
+            "Cite key quantitative anchors to establish stakes: 28.65M secrets leaked on public GitHub 2025, Claude Code commit leak rate 3.2% vs. 1.5% baseline, >85% adaptive prompt injection bypass rate (Maloyan & Namiot arXiv:2601.17548), 11 documented incidents with Critical severity from March 2025 to April 2026.",
+            "Reference rapid MCP ecosystem growth as a force-multiplier: 150M+ SDK downloads affected by by-design RCE, 7,000+ publicly accessible MCP servers, 1,184 confirmed malicious skills in ClawHub."
+          ],
+          "citation_hints": [
+            "research paper or technical report introducing 'GitGuardian State of Secrets Sprawl 2026'",
+            "Maloyan & Namiot (research paper on prompt injection on agentic coding assistants, arXiv:2601.17548)",
+            "research paper or technical report introducing 'AgentTower survey' (arXiv:2603.11088)",
+            "research paper or technical report introducing 'OWASP Top 10 for Large Language Model Applications'",
+            "research paper or technical report introducing 'Model Context Protocol (MCP)' by Anthropic"
+          ]
+        },
+        {
+          "subsection_title": "1.2 Why Existing Security Controls Fail",
+          "content_bullets": [
+            "Explain the semantic gap: kernel-level eBPF hooks see `curl` execute after the agent has already decided to exfiltrate credentials — the decision point is the agent's tool-call generation, not OS invocation.",
+            "Explain why cloud DLP and network proxies fail: they cannot reason about the agent's intent or the semantic meaning of what is being transmitted relative to the task context.",
+            "Explain why static secret scanners (Gitleaks standalone, TruffleHog, GitHub Secret Scanning) fail in agentic contexts: they operate post-hoc on committed code, cannot scan JSONL session transcripts, API logs, or cursor cache directories where secrets reside after the agent processes them.",
+            "Introduce the hook-layer insight from idea.md: the only effective interception point is the agent's own PreToolUse/PostToolUse hook layer, where tool-call decisions can be evaluated with semantic context before OS execution.",
+            "Preview the three-layer architecture as the paper's contribution: Cloak, Warden, Sweep address pre-execution, execution-time, and post-execution phases of the threat lifecycle."
+          ],
+          "citation_hints": [
+            "research paper or technical report introducing 'ClawGuard: Runtime Security at Tool-Call Boundaries' (arXiv:2604.11790)",
+            "research paper or technical report introducing 'AgentSpec: Runtime Enforcement DSL' (arXiv:2503.18666)",
+            "research paper or technical report introducing 'Credential Leakage in LLM Agent Skills' (Chen et al., arXiv:2604.03070)"
+          ]
+        }
+      ]
+    },
+    {
+      "section_title": "2. Background and Threat Model",
+      "subsections": [
+        {
+          "subsection_title": "2.1 AI Coding Agents: Architecture and Capabilities",
+          "content_bullets": [
+            "Describe the architectural components of AI coding agents: LLM backbone (Claude 3.x/4.x, GPT-4/o1, Gemini), tool-call protocol (PreToolUse/PostToolUse hooks in Claude Code, VS Code extension APIs in Cursor/Windsurf/Copilot), file system tools (read/write/execute), shell execution tools, and MCP integration for external service access.",
+            "Characterize the ambient authority granted to agents: same filesystem permissions as the developer, access to ~/.ssh, ~/.aws, ~/.env, git credential stores, and any secrets accessible to the developer's shell session.",
+            "Describe the Model Context Protocol (MCP) as the primary surface for third-party tool integration: tool discovery via JSON manifests, STDIO/HTTP transport, and the trust chain from tool description to tool execution.",
+            "Explain the PreToolUse/PostToolUse hook protocol as the architectural leverage point for security interception — this is where Prismor Warden and Cloak operate."
+          ],
+          "citation_hints": [
+            "research paper or technical report introducing 'Model Context Protocol (MCP)' by Anthropic",
+            "research paper or technical report introducing 'Claude Code' by Anthropic",
+            "research paper or technical report introducing 'GitHub Copilot' by GitHub/Microsoft"
+          ]
+        },
+        {
+          "subsection_title": "2.2 Threat Model: Actors, Assets, and Attack Surfaces",
+          "content_bullets": [
+            "Define the threat actors: external attackers injecting malicious instructions through repository content, CI/CD pipeline outputs, or MCP tool responses; malicious MCP server operators; supply chain attackers poisoning npm/PyPI packages consumed by MCP skills; and insider threats leveraging agent capabilities for privilege escalation.",
+            "Define the protected assets: developer credentials (API keys, SSH keys, AWS/GCP tokens, database passwords), proprietary source code, CI/CD pipeline configurations, production infrastructure access, and private repository contents.",
+            "Enumerate the primary attack surfaces: (1) prompt injection via repository content/web results, (2) MCP tool poisoning via tool description manipulation, (3) supply chain compromise via malicious npm/PyPI packages, (4) rules-file backdoor via Unicode-poisoned .cursorrules/.claude/commands, (5) credential exfiltration via crafted shell commands, (6) hook injection via settings.json manipulation (CVE-2025-59536).",
+            "Establish the Prismor threat model scope: AI coding agent attacks distinct from classical LLM application attacks (no chatbot, no RAG retrieval pipeline) — the agent has execution authority, not just generation authority."
+          ],
+          "citation_hints": [
+            "research paper or technical report introducing 'OWASP Top 10 for Large Language Model Applications'",
+            "Maloyan & Namiot (research paper on prompt injection on agentic coding assistants, arXiv:2601.17548)",
+            "research paper or technical report introducing 'AgentTower' (arXiv:2603.11088)",
+            "research paper or technical report introducing 'Cornell/NVIDIA/Google system-level defenses' (arXiv:2603.30016)"
+          ]
+        }
+      ]
+    },
+    {
+      "section_title": "3. Threat Landscape and Related Work",
+      "subsections": [
+        {
+          "subsection_title": "3.1 Documented Incidents (2025-2026)",
+          "content_bullets": [
+            "Present the 11-incident timeline table from experimental_log.md Section 10 using booktabs LaTeX formatting, with columns: Date, Incident, Attack Vector, Severity — spanning March 2025 (Rules File Backdoor, Unicode config poisoning, High) through April 2026 (Flowise RCE CVE-2025-59528 CVSS 10.0 Critical, MCP SDK by-design RCE 150M+ downloads Critical, Claude Code hook injection CVE-2025-59536 CVSS 8.7 High).",
+            "Annotate the incident table with cross-references to Prismor detection categories: Rules File Backdoor → Warden prompt_injection category; credential exfiltration → Warden secret_exfiltration + Cloak; MCP tool poisoning → Warden MCP/skill scanner; supply chain → Immunity Feed CVE correlation.",
+            "Note the acceleration pattern: 4 incidents in 2025 H1, escalating to 7 Critical-severity events by April 2026, including the first CVSS 10.0 LLM platform RCE (Flowise) and first Claude Code-specific hook injection CVE.",
+            "Reference the MCP-specific threat data: 7,000+ publicly accessible MCP servers, 8,000+ with unauthenticated admin panels, 1,184 confirmed malicious ClawHub skills (Antiy CERT, experimental_log.md Section 6)."
+          ],
+          "citation_hints": [
+            "research paper or technical report introducing 'LangChain RCE CVE-2025-68664'",
+            "research paper or technical report introducing 'Flowise RCE CVE-2025-59528'",
+            "research paper or technical report introducing 'Claude Code hook injection CVE-2025-59536'",
+            "research paper or technical report introducing 'SANDWORM_MODE malicious npm campaign' (The Hacker News)"
+          ]
+        },
+        {
+          "subsection_title": "3.2 Academic Research on Runtime Enforcement",
+          "content_bullets": [
+            "Review ClawGuard (Zhao et al., arXiv:2604.11790): hook-layer enforcement at tool-call boundaries, <5% attack success rate across 3 benchmarks and 5 LLMs — validates Prismor Warden's architectural approach.",
+            "Review AgentSpec (Wang et al., arXiv:2503.18666, ICSE 2026): runtime enforcement DSL achieving >90% unsafe code prevention and 100% elimination of hazardous actions — validates Prismor Warden's YAML policy engine design.",
+            "Review AttriGuard (He et al., arXiv:2603.10749): causal attribution for tool invocations achieving 0% static attack success — validates the causal reasoning extension for Warden's attribution layer.",
+            "Review ICON (Wang et al., arXiv:2602.20708): latent-space injection detection achieving 0.4% attack success rate — identifies the model-layer complementary defense Prismor does not yet implement.",
+            "Review AgentSentry (arXiv:2602.22724): temporal causal injection detection addressing multi-turn session gaps — identifies the session-continuity attack vector.",
+            "Synthesize: all five systems validate hook-layer interception as the necessary architectural approach, but none are deployable as developer-native tools for Claude Code/Cursor without model modification or cloud infrastructure."
+          ],
+          "citation_hints": [
+            "research paper or technical report introducing 'ClawGuard: Runtime Security at Tool-Call Boundaries' (arXiv:2604.11790)",
+            "research paper or technical report introducing 'AgentSpec: Runtime Enforcement DSL' (arXiv:2503.18666)",
+            "research paper or technical report introducing 'AttriGuard: Causal Attribution for Tool Invocations' (arXiv:2603.10749)",
+            "research paper or technical report introducing 'ICON: Latent-Space Injection Detection' (arXiv:2602.20708)",
+            "research paper or technical report introducing 'AgentSentry: Temporal Causal Injection' (arXiv:2602.22724)"
+          ]
+        },
+        {
+          "subsection_title": "3.3 MCP as Primary Emerging Attack Surface",
+          "content_bullets": [
+            "Characterize the MCP threat model: tool description injection (poisoning the LLM's understanding of what a tool does), rug-pull attacks (tool description changes post-installation), unauthenticated admin access to MCP server management panels, and STDIO-based RCE by design in the MCP SDK.",
+            "Cite the experimental_log.md Section 6 data: 150M+ SDK downloads affected by by-design RCE, 7,000+ publicly accessible servers, 8,000+ with unauthenticated admin panels, 4 MCP-related CVEs documented 2025-2026.",
+            "Review existing MCP security tooling: MCP-Scan (OSS, static description scanner), Snyk/Invariant Labs CLI (acquired June 2025, CLI-level MCP scanning only) — both provide static analysis without runtime interception.",
+            "Position Prismor Warden's MCP/skill scanner detection category as the runtime complement to static MCP scanning, operating at the PreToolUse hook before tool execution rather than during tool discovery."
+          ],
+          "citation_hints": [
+            "research paper or technical report introducing 'MCP tool poisoning' (Invariant Labs)",
+            "research paper or technical report introducing 'MCP SDK by-design RCE' (SecurityWeek, April 2026)",
+            "research paper or technical report introducing 'MCP-Scan' open source tool",
+            "research paper or technical report introducing 'GitHub MCP private repo access exploit' (May 2025)"
+          ]
+        }
+      ]
+    },
+    {
+      "section_title": "4. Prismor: Defense-in-Depth Architecture",
+      "subsections": [
+        {
+          "subsection_title": "4.1 Warden: Hook-Layer Runtime Enforcement",
+          "content_bullets": [
+            "Describe Warden's interception point: Claude Code's PreToolUse and PostToolUse hooks — upstream of OS execution — with sub-millisecond overhead (bash+jq, no Python on hot path) from experimental_log.md Section 9.",
+            "Detail the YAML policy engine: 25+ default detection rules across 10 threat categories (destructive commands, secret exfiltration, remote code execution, prompt injection, privilege escalation, denial-of-service, persistence mechanisms, DNS exfiltration, MCP/skill scanner, network isolation) from idea.md.",
+            "Explain rule structure: event type + regex pattern + severity + action tuples; project-level overrides merge against default policy; non-overridable critical rules that cannot be disabled by any project configuration — from idea.md Layer 2.",
+            "Describe observe vs. enforce modes: observe mode logs all events to JSONL audit trail indexed in SQLite; enforce mode blocks actions matching critical rules before OS execution.",
+            "Note that Warden supports 4 coding agents: Claude Code, Cursor, Windsurf, OpenClaw — from experimental_log.md Section 9."
+          ],
+          "citation_hints": [
+            "research paper or technical report introducing 'ClawGuard: Runtime Security at Tool-Call Boundaries' (arXiv:2604.11790)",
+            "research paper or technical report introducing 'AgentSpec: Runtime Enforcement DSL' (arXiv:2503.18666)",
+            "research paper or technical report introducing 'Claude Code hook protocol' by Anthropic"
+          ]
+        },
+        {
+          "subsection_title": "4.2 Cloak: Pre-emptive Secret Substitution",
+          "content_bullets": [
+            "Describe the secret store: developer registers secrets once into ~/.prismor/secrets/ (mode 0700/0600); model references them as @@SECRET:<name>@@ placeholders in all tool calls — from idea.md Layer 1.",
+            "Detail the three hook integration points: (1) PreToolUse hook substitutes real value immediately before OS execution; (2) PostToolUse hook uses sed to scrub real value from captured stdout before Claude sees the output; (3) UserPromptSubmit hook detects accidentally pasted credentials via 15+ pattern types (Stripe sk_live_, GitHub ghp_, AWS AKIA) — from idea.md Layer 1.",
+            "Explain the UserPromptSubmit auto-registration flow: detected credentials are auto-registered under a hashed placeholder name, the prompt submission is blocked, and the user is asked to resubmit without the raw secret.",
+            "State the security guarantee from idea.md Expected Contribution point 3: pre-emptive cloaking reduces secret leakage risk to near-zero for secrets registered in the store, vs. the 3.2% baseline leak rate for Claude Code-assisted commits."
+          ],
+          "citation_hints": [
+            "research paper or technical report introducing 'Credential Leakage in LLM Agent Skills' (Chen et al., arXiv:2604.03070)",
+            "research paper or technical report introducing 'GitGuardian State of Secrets Sprawl 2026'",
+            "research paper or technical report introducing 'AWS AKIA credential pattern detection'"
+          ]
+        },
+        {
+          "subsection_title": "4.3 Sweep: Post-hoc Secret Remediation",
+          "content_bullets": [
+            "Describe Sweep's scanning scope: Claude transcript JSONL files, Cursor/Windsurf/Codex cache directories, and AI tool config directories — from idea.md Layer 3.",
+            "Detail the three operating modes: dry-run (full report with file path, line number, column, match type), redact (replace secrets in-place with AES-256-CBC encrypted vault backups preserving recovery provenance), delete (remove files containing secrets).",
+            "Note the Gitleaks integration: 170+ credential patterns from experimental_log.md Section 9, with .env files allowlisted as developer-intentional credentials managed by Cloak.",
+            "Position Sweep as the defense against historical exposure: even if Cloak was not active when a secret was processed, Sweep retroactively remediates it from all agent-accessible locations."
+          ],
+          "citation_hints": [
+            "research paper or technical report introducing 'Gitleaks secret scanner'",
+            "research paper or technical report introducing 'Credential Leakage in LLM Agent Skills' (Chen et al., arXiv:2604.03070)"
+          ]
+        },
+        {
+          "subsection_title": "4.4 Immunity Feed: Signed Threat Intelligence",
+          "content_bullets": [
+            "Describe the feed: immunity-feed.json with 217 advisories as of March 2026, Ed25519-signed for tamper-evidence, from experimental_log.md Section 9.",
+            "Detail the NVD-fetch pipeline: automated polling for AI-ecosystem CVEs (LangChain, LlamaIndex, OpenAI, Anthropic, CrewAI), mapping to 7 Prismor threat categories (prompt_injection, data_exfiltration, unsafe_tool_execution, jailbreak, policy_bypass, dependency_vulnerability, model_denial_of_service).",
+            "Explain runtime correlation: Warden consults the feed during enforce mode to correlate observed tool call patterns against known CVE exploitation signatures.",
+            "Note the threat schema source of truth: pipeline/schemas/threat-object.schema.json — from idea.md Threat Intelligence Feed section."
+          ],
+          "citation_hints": [
+            "research paper or technical report introducing 'NVD National Vulnerability Database'",
+            "research paper or technical report introducing 'Ed25519 signature scheme'",
+            "research paper or technical report introducing 'LangChain RCE CVE-2025-68664'"
+          ]
+        }
+      ]
+    },
+    {
+      "section_title": "5. Competitive Analysis",
+      "subsections": [
+        {
+          "subsection_title": "5.1 Competitive Map and Vendor Taxonomy",
+          "content_bullets": [
+            "Present the competitive positioning diagram (fig_competitive_positioning_map): 2D scatter plot with x-axis = specificity to AI coding agents (0=generic LLM security to 1=agent-native), y-axis = runtime enforcement level (0=static scan only to 1=real-time hook-layer enforcement).",
+            "Identify four competitive quadrants: (1) Generic LLM security without runtime enforcement (Lakera AI, NeMo Guardrails, LLM Guard); (2) Runtime enforcement without coding agent specificity (Prompt Security, CrowdStrike AIDR); (3) Coding agent adjacent without runtime enforcement (Snyk/Invariant, Endor Labs, MCP-Scan); (4) Coding agent native + runtime enforcement (Prismor — unique position).",
+            "Characterize the vendor consolidation wave from experimental_log.md Section 7: Invariant Labs → Snyk (June 2025), Protect AI → Palo Alto Networks (2025), CalypsoAI → F5 Networks (~2024), Robust Intelligence → Cisco (2024) — signaling that incumbent security vendors are acquiring AI security capabilities rather than building natively.",
+            "Note the VC funding landscape: Irregular $80M Series B (Sept 2025), WitnessAI $58M Series B (2025), Lakera AI $20M Series A (Sept 2024), Runlayer $11M Seed (April 2025), Pillar Security $9M Seed (April 2025) — from experimental_log.md Section 7."
+          ],
+          "citation_hints": [
+            "research paper or technical report introducing 'Snyk developer security platform'",
+            "research paper or technical report introducing 'Palo Alto Networks AI Runtime Security'"
+          ]
+        },
+        {
+          "subsection_title": "5.2 Capability Matrix Analysis",
+          "content_bullets": [
+            "Present the 12-vendor x 7-capability matrix table from experimental_log.md Section 8 using booktabs LaTeX formatting with \\yes, \\no, \\partial custom commands from template.tex — rendering as color-coded cells (green/red/yellow).",
+            "Highlight the key finding: Prismor is the only vendor scoring YES on all six binary capabilities (Claude Code Hook, Secrets Cloaking, Post-hoc Sweep, MCP Detection, Air-gap/Local, Policy-as-Code) plus highest OWASP coverage at 6-7/10.",
+            "Analyze coverage gaps by competitor category: Snyk/Invariant (CLI MCP scanning only, 3/10 OWASP, no hook/cloak/sweep), Prompt Security (gateway MCP detection, 5/10 OWASP, no hook/cloak/sweep), OSS tools (LLM Guard, NeMo Guardrails: local deployment but no MCP/hook/cloak, 3/10 OWASP).",
+            "Cross-reference the competitive map figure with the matrix to show that no vendor above Prismor on the y-axis (runtime enforcement) also scores YES on coding-agent-specific capabilities (Hook, Cloak, Sweep)."
+          ],
+          "citation_hints": [
+            "research paper or technical report introducing 'OWASP Top 10 for Large Language Model Applications'",
+            "research paper or technical report introducing 'NeMo Guardrails' by NVIDIA",
+            "research paper or technical report introducing 'LLM Guard' open source"
+          ]
+        }
+      ]
+    },
+    {
+      "section_title": "6. Evaluation",
+      "subsections": [
+        {
+          "subsection_title": "6.1 OWASP LLM Top 10 Coverage Analysis",
+          "content_bullets": [
+            "Map Prismor's 10 Warden detection categories against the OWASP Top 10 for LLMs: LLM01 (Prompt Injection) → Warden prompt_injection category; LLM02 (Insecure Output Handling) → Warden unsafe_tool_execution; LLM03 (Training Data Poisoning) → Immunity Feed dependency_vulnerability; LLM06 (Sensitive Information Disclosure) → Cloak + Sweep + Warden secret_exfiltration; LLM08 (Excessive Agency) → Warden destructive_commands + privilege_escalation.",
+            "State the 6-7/10 OWASP coverage score from experimental_log.md Section 8 and identify the gaps: LLM04 (Model Denial of Service) partially covered, LLM05 (Supply Chain Vulnerabilities) covered via Immunity Feed NVD pipeline, LLM07/LLM09/LLM10 not yet covered.",
+            "Compare OWASP coverage across vendors: Prompt Security 5/10, Pillar Security 4/10, Lakera AI 4/10, Snyk/Invariant 3/10, Runlayer 2/10 — from experimental_log.md Section 8 matrix."
+          ],
+          "citation_hints": [
+            "research paper or technical report introducing 'OWASP Top 10 for Large Language Model Applications'",
+            "research paper or technical report introducing 'AgentSpec: Runtime Enforcement DSL' (arXiv:2503.18666)"
+          ]
+        },
+        {
+          "subsection_title": "6.2 Empirical Secrets Leakage Evidence",
+          "content_bullets": [
+            "Present the secrets leakage comparison figure (fig_secrets_leakage_comparison): 3.2% Claude Code commit leak rate vs. 1.5% human baseline (2.13x multiplier) from GitGuardian State of Secrets Sprawl 2026, alongside 28.65M total hardcoded secrets (+34% YoY) and 1,275,105 AI service credentials (+81% YoY).",
+            "Present Chen et al. (arXiv:2604.03070) findings: 17,022 skills analyzed, 520 vulnerable (3.06%), 1,708 distinct security issues, 76.3% requiring joint code+NL analysis, 73.5% caused by debug logging, 89.6% immediately exploitable, 91.6% fixed post-disclosure.",
+            "Argue the defense case: Prismor Cloak eliminates the primary leak vector (secrets in model context/transcripts) by design; Sweep remediates historical exposure; the 91.6% post-disclosure fix rate demonstrates that remediation is tractable once exposure is detected.",
+            "State the near-zero guarantee: for secrets registered in the Cloak store, the combination of PreToolUse substitution and PostToolUse scrubbing ensures zero real-value exposure in model context, API transcripts, or session logs — per idea.md Expected Contribution point 3."
+          ],
+          "citation_hints": [
+            "research paper or technical report introducing 'GitGuardian State of Secrets Sprawl 2026'",
+            "research paper or technical report introducing 'Credential Leakage in LLM Agent Skills' (Chen et al., arXiv:2604.03070)"
+          ]
+        },
+        {
+          "subsection_title": "6.3 Attack Success Rate Benchmarks",
+          "content_bullets": [
+            "Tabulate attack success rates from experimental_log.md Section 5 using booktabs: Adaptive prompt injection vs. current defenses >85% (Maloyan & Namiot arXiv:2601.17548); static attacks vs. AttriGuard 0% (He et al. arXiv:2603.10749); attacks vs. ClawGuard <5% (Zhao et al. arXiv:2604.11790); attacks vs. ICON 0.4% (Wang et al. arXiv:2602.20708); AgentSpec prevention of unsafe code >90%, elimination of hazardous actions 100% (Wang et al., ICSE 2026).",
+            "Interpret the benchmark results: the >85% adaptive prompt injection bypass rate against 'current defenses' represents the undefended baseline; ClawGuard's <5% at the hook layer and AgentSpec's 100% hazardous action elimination at the policy layer validate Prismor Warden's architectural approach.",
+            "Note performance data from experimental_log.md Section 9: sub-millisecond hook enforcement overhead (bash+jq, no Python on hot path), 217 signed advisory feed entries, JSONL+SQLite session storage — establishing that security overhead does not degrade developer experience.",
+            "Acknowledge limitations: benchmarks from independent academic papers (ClawGuard, AgentSpec) validate the architecture but are not directly measured on Prismor's implementation; internal measurements of Cloak's zero-leakage guarantee are empirical for registered secrets only."
+          ],
+          "citation_hints": [
+            "Maloyan & Namiot (research paper on prompt injection on agentic coding assistants, arXiv:2601.17548)",
+            "research paper or technical report introducing 'ClawGuard: Runtime Security at Tool-Call Boundaries' (arXiv:2604.11790)",
+            "research paper or technical report introducing 'AgentSpec: Runtime Enforcement DSL' (arXiv:2503.18666, ICSE 2026)",
+            "research paper or technical report introducing 'AttriGuard: Causal Attribution for Tool Invocations' (arXiv:2603.10749)",
+            "research paper or technical report introducing 'ICON: Latent-Space Injection Detection' (arXiv:2602.20708)"
+          ]
+        }
+      ]
+    },
+    {
+      "section_title": "7. Market Opportunity and Strategic Roadmap",
+      "subsections": [
+        {
+          "subsection_title": "7.1 Market Sizing and Growth",
+          "content_bullets": [
+            "Present the market growth chart (fig_market_growth_gen_ai_cybersecurity): Gen AI in Cybersecurity $8.65B (2025) → $35.5B (2031) at 26.5% CAGR (MarketsandMarkets), alongside the $25.5B broad AI in Cybersecurity market (2026) — from experimental_log.md Section 2.",
+            "Establish the developer security benchmark: Snyk $200M ARR with 400,000+ registered developers from experimental_log.md Section 2 — demonstrating that developer-native security tooling commands premium ARR at scale.",
+            "Size the immediate addressable market: Claude Code, Cursor, Windsurf, GitHub Copilot combined user bases as the primary TAM; enterprise developer security budgets as the monetization channel.",
+            "Project the $72M+ ARR opportunity from idea.md Expected Contribution point 5 using the open-core freemium model: free tier (community Warden + Sweep), Pro tier (Cloak + policy management + audit), Enterprise tier (SSO, custom policy feeds, compliance reporting)."
+          ],
+          "citation_hints": [
+            "research paper or technical report introducing 'MarketsandMarkets Gen AI in Cybersecurity 2025-2031 report'",
+            "research paper or technical report introducing 'Snyk developer security platform ARR benchmark'"
+          ]
+        },
+        {
+          "subsection_title": "7.2 Strategic Opportunities",
+          "content_bullets": [
+            "Identify target customer segments: (1) Enterprise developer teams with >50 engineers using AI coding agents who face SOC2/ISO27001 compliance requirements; (2) Security-conscious startups building with AI coding agents in regulated industries (fintech, healthtech); (3) Enterprises with AI governance mandates requiring auditability of AI-generated code changes.",
+            "Characterize the consolidation opportunity from experimental_log.md Section 7: four major acquisitions (Invariant→Snyk, Protect AI→PAN, CalypsoAI→F5, Robust Intelligence→Cisco) indicate incumbent appetite to acquire rather than build, positioning Prismor as an acquisition target for a cloud security or developer platform vendor.",
+            "Identify the open-core distribution advantage: developer-native deployment (no infrastructure, no proxy, no agent modification) lowers the acquisition barrier vs. enterprise security platforms; community adoption via free tier builds the network effect and advisory feed data flywheel."
+          ],
+          "citation_hints": [
+            "research paper or technical report introducing 'Snyk acquisition of Invariant Labs (June 2025)'"
+          ]
+        },
+        {
+          "subsection_title": "7.3 Product Roadmap",
+          "content_bullets": [
+            "Near-term priorities (0-6 months): expand Warden detection rules from 25+ to 50+ with community-contributed YAML policies; extend Cloak to Cursor and Windsurf agent hook protocols; add Sweep coverage for GitHub Actions runner logs and CI/CD artifact stores.",
+            "Medium-term priorities (6-18 months): implement the causal attribution extension (AttriGuard approach) for multi-step attack chain detection; add ICON-style latent-space complement as optional cloud-side analysis; build compliance reporting for SOC2 and ISO27001 audit evidence export.",
+            "Long-term priorities (18-36 months): enterprise policy management console with SSO/SCIM; custom threat intelligence feed subscription for enterprise-specific CVE categories; multi-agent orchestration security for LangChain/CrewAI/AutoGPT workflows.",
+            "Monetization model: open-core freemium (free: community Warden + Sweep; Pro $29/dev/mo: Cloak + policy management + Immunity Feed; Enterprise: custom pricing with compliance module and SLA)."
+          ],
+          "citation_hints": [
+            "research paper or technical report introducing 'AttriGuard: Causal Attribution for Tool Invocations' (arXiv:2603.10749)",
+            "research paper or technical report introducing 'ICON: Latent-Space Injection Detection' (arXiv:2602.20708)"
+          ]
+        },
+        {
+          "subsection_title": "7.4 Go-to-Market Strategy",
+          "content_bullets": [
+            "Developer-led growth: distribute Prismor Warden as a free Claude Code extension; community GitHub repo with open-source core; developer blog posts documenting real incident analyses using the Immunity Feed advisories.",
+            "Enterprise sales motion: SOC2 audit evidence packaging; CISO-level briefing materials on the 11-incident timeline and 28.65M secrets sprawl data; enterprise pilot program with 90-day security posture assessment.",
+            "Partnership strategy: MCP marketplace listing for Warden as a security companion MCP; Anthropic Claude Code ecosystem program; integration with existing developer security platforms (GitHub Advanced Security, GitGuardian Enterprise)."
+          ],
+          "citation_hints": []
+        }
+      ]
+    },
+    {
+      "section_title": "8. Conclusion",
+      "subsections": [
+        {
+          "subsection_title": "8.1 Summary of Contributions",
+          "content_bullets": [
+            "Restate the four technical contributions from idea.md Expected Contributions: (1) formal characterization of the AI coding agent threat surface as distinct from LLM application security; (2) architectural demonstration that hook-layer interception is necessary and sufficient to close the semantic gap; (3) empirical evidence of Cloak's near-zero leakage guarantee vs. 3.2% baseline; (4) competitive analysis establishing Prismor as the sole three-layer defense-in-depth vendor.",
+            "Summarize the quantitative case: 11 documented incidents (March 2025–April 2026), 28.65M leaked secrets, 3.2% AI commit leak rate, >85% adaptive prompt injection bypass rate against current defenses — collectively establishing the urgency of the agent-native security category.",
+            "Confirm the market opportunity: $8.65B→$35.5B (2025-2031) Gen AI cybersecurity market at 26.5% CAGR, Snyk's $200M ARR developer security benchmark, and four major acquisitions validating incumbent demand for AI-native security capabilities."
+          ],
+          "citation_hints": [
+            "research paper or technical report introducing 'GitGuardian State of Secrets Sprawl 2026'",
+            "Maloyan & Namiot (research paper on prompt injection on agentic coding assistants, arXiv:2601.17548)",
+            "research paper or technical report introducing 'AgentTower survey' (arXiv:2603.11088)"
+          ]
+        },
+        {
+          "subsection_title": "8.2 Open Problems and Future Directions",
+          "content_bullets": [
+            "Multi-agent orchestration security: as LangChain/CrewAI/AutoGPT workflows involve agent-to-agent communication, the trust model for inter-agent tool calls is unsolved — Prismor's hook layer covers single-agent scenarios but multi-agent authorization chains require new policy primitives.",
+            "Adaptive policy learning: current YAML rules require manual authoring; a supervised learning approach (training on the JSONL audit trail) to auto-generate detection rules for novel attack patterns would reduce the policy maintenance burden.",
+            "Latent-space complement integration: ICON's 0.4% attack success rate at the model layer is complementary to Warden's hook-layer enforcement — a production integration that routes suspicious tool calls through ICON-style analysis without developer-visible latency is an open engineering problem.",
+            "Standardization: the absence of a standardized hook protocol across Claude Code, Cursor, Windsurf, and GitHub Copilot creates per-agent porting work; advocacy for a common OWASP agentic security hook specification would benefit the entire ecosystem."
+          ],
+          "citation_hints": [
+            "research paper or technical report introducing 'ICON: Latent-Space Injection Detection' (arXiv:2602.20708)",
+            "research paper or technical report introducing 'AgentSentry: Temporal Causal Injection' (arXiv:2602.22724)",
+            "research paper or technical report introducing 'Cornell/NVIDIA/Google system-level defenses' (arXiv:2603.30016)"
+          ]
+        }
+      ]
+    },
+    {
+      "section_title": "9. References",
+      "subsections": [
+        {
+          "subsection_title": "9.1 Academic Papers",
+          "content_bullets": [
+            "Include all cited academic papers in IEEE numeric format using natbib/plainnat (cutoff: April 28, 2026): ClawGuard (arXiv:2604.11790), AttriGuard (arXiv:2603.10749), AgentSpec (arXiv:2503.18666/ICSE 2026), ICON (arXiv:2602.20708), AgentSentry (arXiv:2602.22724), Maloyan & Namiot (arXiv:2601.17548), Chen et al. credential leakage (arXiv:2604.03070), AgentTower (arXiv:2603.11088), Cornell/NVIDIA/Google system-level defenses (arXiv:2603.30016).",
+            "Format each entry with arXiv ID, year, and full author list to enable downstream Literature Review Agent retrieval; order by citation number as they appear in the paper body."
+          ],
+          "citation_hints": [
+            "research paper or technical report introducing 'ClawGuard: Runtime Security at Tool-Call Boundaries' (arXiv:2604.11790)",
+            "research paper or technical report introducing 'AgentSpec: Runtime Enforcement DSL' (arXiv:2503.18666)",
+            "Maloyan & Namiot (research paper on prompt injection on agentic coding assistants, arXiv:2601.17548)",
+            "research paper or technical report introducing 'Credential Leakage in LLM Agent Skills' (Chen et al., arXiv:2604.03070)",
+            "research paper or technical report introducing 'AgentTower survey' (arXiv:2603.11088)"
+          ]
+        },
+        {
+          "subsection_title": "9.2 Industry Reports, CVEs, and Open-Source Tools",
+          "content_bullets": [
+            "Include industry reports: GitGuardian State of Secrets Sprawl 2026, MarketsandMarkets Gen AI in Cybersecurity 2025-2031 report, SecurityWeek MCP SDK RCE report (April 2026), Antiy CERT ClawHub malicious skills report, The Hacker News SANDWORM_MODE campaign report.",
+            "Include CVE references formatted as NVD entries: CVE-2025-68664 (LangChain deserialization RCE, CVSS 9.3), CVE-2025-59528 (Flowise LLM platform RCE, CVSS 10.0), CVE-2025-59536 (Claude Code hook injection via settings.json, CVSS 8.7).",
+            "Include open-source tool references: Gitleaks (secret scanner, 170+ patterns), MCP-Scan (static MCP description scanner), NeMo Guardrails (NVIDIA, OSS guardrails framework), LLM Guard (OSS, input/output scanner), Microsoft Agent Governance Toolkit (open source, 2026)."
+          ],
+          "citation_hints": [
+            "research paper or technical report introducing 'GitGuardian State of Secrets Sprawl 2026'",
+            "research paper or technical report introducing 'MarketsandMarkets Gen AI in Cybersecurity 2025-2031 report'",
+            "research paper or technical report introducing 'Gitleaks secret scanner'",
+            "research paper or technical report introducing 'NeMo Guardrails' by NVIDIA"
+          ]
+        }
+      ]
+    }
+  ]
+}

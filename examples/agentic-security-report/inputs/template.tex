@@ -1,0 +1,196 @@
+\documentclass[11pt,letterpaper]{article}
+
+% Core packages
+\usepackage[margin=1in]{geometry}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{enumitem}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{tabularx}
+\usepackage{multirow}
+\usepackage{natbib}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{float}
+\usepackage{pgfplots}
+\usepackage{tikz}
+\usepackage{pgf-pie}
+\usepackage{colortbl}
+\usepackage{rotating}
+\usepackage{makecell}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{abstract}
+
+\pgfplotsset{compat=1.18}
+\usetikzlibrary{shapes,arrows,positioning,fit,backgrounds,matrix,decorations.pathreplacing,calc}
+
+% Color definitions
+\definecolor{prismorblue}{RGB}{30,70,140}
+\definecolor{prismorred}{RGB}{180,30,30}
+\definecolor{prismorgray}{RGB}{100,100,100}
+\definecolor{lightgray}{RGB}{240,240,240}
+\definecolor{darkgreen}{RGB}{0,120,50}
+\definecolor{warnyellow}{RGB}{220,160,0}
+\definecolor{cellgreen}{RGB}{180,230,180}
+\definecolor{cellred}{RGB}{255,200,200}
+\definecolor{cellyellow}{RGB}{255,240,180}
+
+% Hyperref setup
+\hypersetup{
+    colorlinks=true,
+    linkcolor=prismorblue,
+    citecolor=prismorblue,
+    urlcolor=prismorblue,
+    pdftitle={Securing the Agentic Frontier: A Comprehensive Analysis of AI Coding Agent Security},
+    pdfauthor={Prismor Security Research},
+    pdfsubject={AI Agent Security, Threat Landscape, Competitive Analysis},
+    pdfkeywords={AI agents, agentic security, prompt injection, MCP security, secrets management, runtime enforcement}
+}
+
+% Header/footer
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{\small\textcolor{prismorgray}{Prismor Security Research --- April 2026}}
+\lhead{\small\textcolor{prismorgray}{Securing the Agentic Frontier}}
+\cfoot{\small\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% Title formatting
+\titleformat{\section}{\large\bfseries\color{prismorblue}}{{\thesection}}{1em}{}[\titlerule]
+\titleformat{\subsection}{\normalsize\bfseries\color{prismorblue}}{\thesubsection}{1em}{}
+\titleformat{\subsubsection}{\normalsize\bfseries\color{prismorgray}}{\thesubsubsection}{1em}{}
+
+% Custom commands
+\newcommand{\yes}{\textcolor{darkgreen}{\textbf{YES}}}
+\newcommand{\no}{\textcolor{prismorred}{\textbf{NO}}}
+\newcommand{\partial}{\textcolor{warnyellow}{\textbf{Partial}}}
+\newcommand{\todo}[1]{\textcolor{prismorred}{[TODO: #1]}}
+
+% Title
+\title{
+    \vspace{-1cm}
+    {\Large\bfseries\color{prismorblue} Securing the Agentic Frontier:}\\
+    \vspace{0.3em}
+    {\large A Comprehensive Analysis of AI Coding Agent Security,\\
+    Threat Landscape, and Defense Architecture}\\
+    \vspace{0.5em}
+    \normalsize\color{prismorgray}
+    Technical White Paper\\
+    \vspace{0.3em}
+}
+\author{
+    \textbf{Prismor Security Research}\\
+    \small\texttt{research@prismor.dev} \quad \texttt{https://prismor.dev}\\
+    \vspace{0.5em}
+}
+\date{\small April 28, 2026}
+
+\begin{document}
+
+\maketitle
+\thispagestyle{fancy}
+
+\begin{abstract}
+\section*{Abstract}
+% ABSTRACT GOES HERE
+\end{abstract}
+
+\tableofcontents
+\clearpage
+
+\section{Introduction}
+% INTRODUCTION GOES HERE
+
+\section{Background and Threat Model}
+% BACKGROUND GOES HERE
+
+\subsection{AI Coding Agents: Architecture and Capabilities}
+% AGENT DESIGN GOES HERE
+
+\subsection{Why Existing Security Controls Fail}
+% FAILURE MODES GOES HERE
+
+\section{Threat Landscape and Related Work}
+% THREAT LANDSCAPE GOES HERE
+
+\subsection{Documented Incidents (2025--2026)}
+% INCIDENTS TABLE GOES HERE
+
+\subsection{Academic Research on Runtime Enforcement}
+% RESEARCH REVIEW GOES HERE
+
+\subsection{MCP as Primary Emerging Attack Surface}
+% MCP SECTION GOES HERE
+
+\section{Prismor: Defense-in-Depth Architecture}
+% ARCHITECTURE GOES HERE
+
+\subsection{Warden: Hook-Layer Runtime Enforcement}
+% WARDEN GOES HERE
+
+\subsection{Cloak: Pre-emptive Secret Substitution}
+% CLOAK GOES HERE
+
+\subsection{Sweep: Post-hoc Secret Remediation}
+% SWEEP GOES HERE
+
+\subsection{Immunity Feed: Signed Threat Intelligence}
+% FEED GOES HERE
+
+\section{Competitive Analysis}
+% COMPETITIVE ANALYSIS GOES HERE
+
+\subsection{Competitive Map and Taxonomy}
+% MAP GOES HERE
+
+\subsection{Vendor Profiles}
+% VENDOR PROFILES GOES HERE
+
+\subsection{Capability Matrix}
+% MATRIX GOES HERE
+
+\section{Evaluation}
+% EVALUATION GOES HERE
+
+\subsection{OWASP LLM Top 10 Coverage}
+% OWASP GOES HERE
+
+\subsection{Secrets Leakage Empirical Evidence}
+% EMPIRICAL GOES HERE
+
+\subsection{Attack Success Rate Benchmarks}
+% BENCHMARKS GOES HERE
+
+\section{Market Opportunity and Strategic Roadmap}
+% MARKET GOES HERE
+
+\subsection{Market Sizing and Growth}
+% SIZING GOES HERE
+
+\subsection{Strategic Opportunities}
+% OPPORTUNITIES GOES HERE
+
+\subsection{Product Roadmap}
+% ROADMAP GOES HERE
+
+\subsection{Go-to-Market Strategy}
+% GTM GOES HERE
+
+\section{Conclusion}
+% CONCLUSION GOES HERE
+
+\bibliographystyle{plainnat}
+\bibliography{refs}
+
+\end{document}

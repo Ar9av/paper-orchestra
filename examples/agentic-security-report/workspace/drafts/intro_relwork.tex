@@ -1,0 +1,491 @@
+\documentclass[11pt,letterpaper]{article}
+
+% Core packages
+\usepackage[margin=1in]{geometry}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{enumitem}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{tabularx}
+\usepackage{multirow}
+\usepackage{natbib}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{float}
+\usepackage{pgfplots}
+\usepackage{tikz}
+\usepackage{pgf-pie}
+\usepackage{colortbl}
+\usepackage{rotating}
+\usepackage{makecell}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{abstract}
+
+\pgfplotsset{compat=1.18}
+\usetikzlibrary{shapes,arrows,positioning,fit,backgrounds,matrix,decorations.pathreplacing,calc}
+
+% Color definitions
+\definecolor{prismorblue}{RGB}{30,70,140}
+\definecolor{prismorred}{RGB}{180,30,30}
+\definecolor{prismorgray}{RGB}{100,100,100}
+\definecolor{lightgray}{RGB}{240,240,240}
+\definecolor{darkgreen}{RGB}{0,120,50}
+\definecolor{warnyellow}{RGB}{220,160,0}
+\definecolor{cellgreen}{RGB}{180,230,180}
+\definecolor{cellred}{RGB}{255,200,200}
+\definecolor{cellyellow}{RGB}{255,240,180}
+
+% Hyperref setup
+\hypersetup{
+    colorlinks=true,
+    linkcolor=prismorblue,
+    citecolor=prismorblue,
+    urlcolor=prismorblue,
+    pdftitle={Securing the Agentic Frontier: A Comprehensive Analysis of AI Coding Agent Security},
+    pdfauthor={Prismor Security Research},
+    pdfsubject={AI Agent Security, Threat Landscape, Competitive Analysis},
+    pdfkeywords={AI agents, agentic security, prompt injection, MCP security, secrets management, runtime enforcement}
+}
+
+% Header/footer
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{\small\textcolor{prismorgray}{Prismor Security Research --- April 2026}}
+\lhead{\small\textcolor{prismorgray}{Securing the Agentic Frontier}}
+\cfoot{\small\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% Title formatting
+\titleformat{\section}{\large\bfseries\color{prismorblue}}{{\thesection}}{1em}{}[\titlerule]
+\titleformat{\subsection}{\normalsize\bfseries\color{prismorblue}}{\thesubsection}{1em}{}
+\titleformat{\subsubsection}{\normalsize\bfseries\color{prismorgray}}{\thesubsubsection}{1em}{}
+
+% Custom commands
+\newcommand{\yes}{\textcolor{darkgreen}{\textbf{YES}}}
+\newcommand{\no}{\textcolor{prismorred}{\textbf{NO}}}
+\newcommand{\todo}[1]{\textcolor{prismorred}{[TODO: #1]}}
+
+% Title
+\title{
+    \vspace{-1cm}
+    {\Large\bfseries\color{prismorblue} Securing the Agentic Frontier:}\\
+    \vspace{0.3em}
+    {\large A Comprehensive Analysis of AI Coding Agent Security,\\
+    Threat Landscape, and Defense Architecture}\\
+    \vspace{0.5em}
+    \normalsize\color{prismorgray}
+    Technical White Paper\\
+    \vspace{0.3em}
+}
+\author{
+    \textbf{Prismor Security Research}\\
+    \small\texttt{research@prismor.dev} \quad \texttt{https://prismor.dev}\\
+    \vspace{0.5em}
+}
+\date{\small April 28, 2026}
+
+\begin{document}
+
+\maketitle
+\thispagestyle{fancy}
+
+\begin{abstract}
+\section*{Abstract}
+% ABSTRACT GOES HERE
+\end{abstract}
+
+\tableofcontents
+\clearpage
+
+% =========================================================
+% SECTION 1: INTRODUCTION
+% =========================================================
+\section{Introduction}
+\label{sec:introduction}
+
+AI coding agents --- including Claude Code, Cursor, Windsurf, and GitHub Copilot
+--- have transitioned from experimental assistants to primary development infrastructure.
+These systems now serve tens of millions of developers, autonomously reading and writing
+files, executing arbitrary shell commands, accessing credential stores, and interacting
+with external services through the Model Context Protocol (MCP).
+The security controls developed for earlier software ecosystems --- kernel-level eBPF
+hooks, cloud data-loss prevention gateways, and static secret scanners --- are
+architecturally mismatched to this environment.
+By the time a kernel hook observes a \texttt{curl} process spawned by an agent,
+the agent has already decided to exfiltrate credentials; the window for semantic
+interception has closed.
+
+The threat is not hypothetical.
+Indirect prompt injection attacks achieve greater than 85\% success against current
+defenses across 42 documented attack techniques~\cite{maloyan2026prompt}.
+Claude Code-assisted commits leak secrets at 3.2\%, more than double the 1.5\%
+baseline rate for human-authored commits~\cite{gitguardian2026state}.
+In aggregate, 28.65 million hardcoded secrets were detected on public GitHub in
+2025 alone, a 34\% year-over-year increase, including 1,275,105 AI service
+credentials~\cite{gitguardian2026state}.
+An empirical study of 17,022 agent skills found that 520 (3.06\%) leaked
+credentials, of which 89.6\% were immediately exploitable~\cite{chen2026credential}.
+The MCP ecosystem has amplified these risks: a by-design remote code execution
+(RCE) vulnerability in the MCP SDK's STDIO interface affected more than 150 million
+downloads~\cite{mcprce2026}, over 8,000 publicly accessible MCP servers exposed
+unauthenticated administrative panels~\cite{exposedmcp2026}, and 1,184 malicious
+skills were confirmed in public skill repositories~\cite{exposedmcp2026}.
+The generative AI cybersecurity market has responded with four major acquisitions
+in eighteen months and is projected to grow from \$8.65B (2025) to \$35.5B (2031)
+at a 26.5\% compound annual growth rate~\cite{marketsandmarkets2026generative}.
+
+Despite this activity, a structural gap persists.
+Existing runtime enforcement systems --- ClawGuard~\cite{zhao2026clawguard},
+AgentSpec~\cite{wang2026agentspec}, AttriGuard~\cite{he2026attriguard},
+ICON~\cite{wang2026icon}, and AgentSentry~\cite{authors2026agentsentry} --- each address
+a subset of the threat lifecycle but none compose pre-emptive secret prevention
+with semantic runtime enforcement and post-hoc remediation into a single,
+developer-native package.
+MCP-specific scanning tools operate as point-in-time static analyzers that
+cannot detect dynamic rug-pull attacks or enforce policy at execution
+boundaries~\cite{cosai2026mcp,invariantlabs2025mcp}.
+Secret detection tools such as GitGuardian operate after exposure, not
+before~\cite{gitguardian2026state}.
+A position paper from NVIDIA and Johns Hopkins argues that system-level
+defenses are necessary precisely because no single mechanism spans the full
+threat lifecycle~\cite{research2026architecting}.
+Prior taxonomies classify attack techniques but do not map to a deployed
+enforcement product~\cite{kim2026attack,foundation2025owasp}.
+
+This paper presents Prismor, a three-layer defense-in-depth architecture
+operating entirely at the agent's hook layer.
+Layer~1 (Cloak) prevents real secret values from entering model context by
+substituting \texttt{@@SECRET:<name>@@} placeholders before the agent processes
+any prompt, with \texttt{PreToolUse} and \texttt{PostToolUse} hooks performing
+transparent substitution and scrubbing at execution boundaries.
+Layer~2 (Warden) intercepts every tool call at the same hook layer and evaluates
+it against a YAML policy engine with 25+ default rules across 10 threat
+categories, operating in either observe or enforce mode with sub-millisecond
+overhead.
+Layer~3 (Sweep) performs post-hoc remediation by scanning Claude transcript
+JSONL files, Cursor and Windsurf cache directories, and AI tool configuration
+directories using Gitleaks'~\cite{rice2024gitleaks} 170+ credential patterns,
+with redact, delete, and dry-run operating modes.
+A signed advisory feed with Ed25519 integrity verification provides runtime
+threat correlation across all three layers.
+
+The main contributions of this paper are:
+\begin{enumerate}[leftmargin=*, label=(\arabic*)]
+  \item A formal characterization of the AI coding agent threat surface that is
+        distinct from existing LLM application security and ML security threat models,
+        grounded in documented incidents from 2025--2026.
+  \item A demonstration that hook-layer interception is both \emph{necessary} and
+        \emph{sufficient} to close the semantic gap that kernel-level and proxy-based
+        controls cannot fill, and that this interception point supports the full
+        three-layer composition.
+  \item Empirical evidence that pre-emptive secrets cloaking reduces leakage risk
+        to near-zero for registered secrets, against a 3.2\% baseline leak rate in
+        Claude Code-assisted commits~\cite{gitguardian2026state}.
+  \item A competitive capability analysis demonstrating that no existing commercial
+        or open-source tool covers all three layers (Cloak, Warden, Sweep) for
+        developer-native AI coding agent environments.
+\end{enumerate}
+
+% =========================================================
+% SECTION 2 (Background/Threat Model placeholder, as in template)
+% =========================================================
+\section{Background and Threat Model}
+% BACKGROUND GOES HERE
+
+\subsection{AI Coding Agents: Architecture and Capabilities}
+% AGENT DESIGN GOES HERE
+
+\subsection{Why Existing Security Controls Fail}
+% FAILURE MODES GOES HERE
+
+% =========================================================
+% SECTION 3: THREAT LANDSCAPE AND RELATED WORK
+% =========================================================
+\section{Threat Landscape and Related Work}
+\label{sec:related}
+
+This section surveys documented AI coding agent incidents from 2025--2026
+(Section~\ref{subsec:incidents}), academic work on runtime enforcement
+systems (Section~\ref{subsec:runtime}), the MCP supply chain attack surface
+(Section~\ref{subsec:mcp}), and secrets and credential leakage research
+(Section~\ref{subsec:secrets}).
+For each cluster we identify the specific limitation that motivates the
+corresponding Prismor layer.
+
+% ---------------------------------------------------------
+\subsection{Documented Incidents (2025--2026)}
+\label{subsec:incidents}
+
+The incident record from 2025 to April 2026 documents an accelerating pattern
+of AI coding agent compromises spanning all three threat categories that Prismor
+addresses.
+
+\textbf{Prompt injection and configuration poisoning.}
+In March 2025, a Unicode-obfuscated rules-file backdoor was discovered affecting
+both Cursor and GitHub Copilot~\cite{security2025rules}, exploiting the fact that
+neither product validated the semantic content of project-level configuration
+before executing agent instructions.
+In April 2026, CVE-2025-59536 (CVSS 8.7) documented a settings.json injection
+vector in Claude Code that permits an adversarially crafted repository to override
+hook configurations, illustrating that the hook layer itself is an attack
+surface that must be hardened with non-overridable critical rules.
+
+\textbf{MCP supply chain and RCE.}
+In April 2025, Invariant Labs demonstrated tool poisoning attacks against MCP
+servers, including tool shadowing, cross-origin privilege escalation, and rug-pull
+attacks in which tool descriptions change after initial security
+review~\cite{invariantlabs2025mcp,labs2025mcpscan}.
+By February 2026, over 8,000 MCP servers were identified with unauthenticated
+administrative panels, and 1,184 malicious skills were confirmed in public
+repositories~\cite{exposedmcp2026}.
+In April 2026, a by-design RCE vulnerability in the MCP SDK's STDIO interface
+affected more than 150 million downloads across approximately 7,000+
+publicly accessible servers~\cite{mcprce2026}.
+The SANDWORM\_MODE campaign (2025) embedded MCP injection payloads across 19
+npm packages~\cite{sandworm2025}.
+The CoSAI MCP Security White Paper~\cite{cosai2026mcp} formalizes the taxonomy
+of these attacks into tool poisoning, rug pulls, and server shadowing categories.
+
+\textbf{Secrets exfiltration and RCE via AI frameworks.}
+CVE-2025-68664 (CVSS 9.3) documented RCE in LangChain via unsafe deserialization
+of secrets, demonstrating that credential handling in AI framework pipelines
+creates direct exploitation paths~\cite{langchainrce2025}.
+The Flowise platform recorded a CVSS 10.0 RCE vulnerability (CVE-2025-59528) in
+April 2026.
+The LiteLLM PyPI package suffered a supply chain backdoor in March 2026.
+Malicious VS Code AI extensions with over 1.5 million combined installs were used
+for credential exfiltration.
+
+This incident record confirms that AI coding agent attacks do not decompose
+cleanly into prevention or detection: each incident required a different
+interception point, motivating the defense-in-depth composition.
+
+% ---------------------------------------------------------
+\subsection{Academic Research on Runtime Enforcement}
+\label{subsec:runtime}
+
+A cohort of concurrent academic systems addresses runtime enforcement for LLM
+agents at varying architectural layers.
+
+\textbf{Hook-layer enforcement.}
+Prior non-agent-specific guardrail frameworks such as NeMo Guardrails~\cite{rebedea2023nemo}
+introduced programmable safety rails for LLM applications, but operate at the
+application-logic layer rather than at an agent's tool-call boundary.
+ClawGuard~\cite{zhao2026clawguard} (Zhao et al., arXiv:2604.11790) intercepts
+tool calls at hook boundaries and achieves less than 5\% attack success across
+five large language models on three benchmarks: AgentDojo, SkillInject, and
+MCPSafeBench.
+ClawGuard is the closest architectural relative of Prismor Warden, establishing
+that hook-layer enforcement is both technically feasible and effective.
+However, ClawGuard does not ship with a user-configurable policy-as-code engine,
+does not integrate pre-emptive secrets cloaking, and does not include post-hoc
+sweep remediation.
+
+\textbf{Policy DSL enforcement.}
+AgentSpec~\cite{wang2026agentspec} (Wang et al., arXiv:2503.18666, ICSE 2026)
+introduces a domain-specific language for specifying runtime constraints on agent
+behavior, achieving greater than 90\% prevention of unsafe code execution,
+100\% elimination of hazardous actions, and sub-millisecond enforcement overhead.
+AgentSpec demonstrates that policy-as-code approaches are both expressive and
+low-overhead.
+The system operates at the model output level rather than at a deployment-native
+hook protocol, making it unsuitable for direct integration with Claude Code's
+\texttt{PreToolUse}/\texttt{PostToolUse} interface without adaptation.
+
+\textbf{Causal attribution.}
+AttriGuard~\cite{he2026attriguard} (He et al., arXiv:2603.10749) uses causal
+attribution of tool invocations to detect adversarial manipulation, achieving 0\%
+attack success against static injection attacks.
+The causal attribution approach provides strong guarantees but requires
+instrumentation of the model's internal reasoning trace, which is not available
+in closed-weight models such as Claude 3.x.
+
+\textbf{Latent-space detection.}
+ICON~\cite{wang2026icon} (Wang et al., arXiv:2602.20708) detects prompt injection
+in the model's latent representation space, reducing attack success to 0.4\% while
+improving utility by more than 50\%.
+AgentSentry~\cite{authors2026agentsentry} (arXiv:2602.22724) addresses multi-turn
+temporal causal injection and session correlation attacks that single-turn systems
+miss.
+Both approaches operate inside the model and require either white-box access or
+specialized inference infrastructure, neither of which is available to
+developer-native tooling.
+
+\textbf{System-level position.}
+A position paper from researchers at NVIDIA and Johns Hopkins
+(\cite{research2026architecting}, arXiv:2603.30016) argues that system-level defenses are
+necessary because no single model-layer or kernel-layer mechanism can address the
+full attack surface.
+This argument directly supports the Prismor three-layer composition.
+
+\textbf{Limitation.}
+All of the above systems operate as standalone defenses.
+None address pre-emptive secret prevention (which reduces the attack surface
+before any injection can occur), and none provide post-hoc sweep remediation for
+secrets already resident in agent caches and transcripts.
+Consequently, even an agent fully protected by ClawGuard or AgentSpec remains
+exposed to the 3.2\% background secret leakage rate documented in
+\cite{gitguardian2026state}.
+Prismor Warden operates at the same hook-layer interception point as ClawGuard
+but composes it with Cloak and Sweep to cover the complete threat lifecycle.
+
+% ---------------------------------------------------------
+\subsection{MCP as Primary Emerging Attack Surface}
+\label{subsec:mcp}
+
+The Model Context Protocol has become the dominant mechanism by which AI coding
+agents extend their capabilities with external tools and data sources.
+Systematic surveys of the MCP ecosystem have documented a qualitatively new
+category of supply chain threat.
+
+\textbf{Attack taxonomy.}
+The CoSAI MCP Security White Paper~\cite{cosai2026mcp} enumerates three primary
+attack classes: tool poisoning (injecting adversarial instructions into tool
+descriptions prior to installation), rug pulls (changing tool behavior after the
+agent has already trusted the description), and server shadowing (registering
+a malicious server that intercepts calls intended for a legitimate server).
+Invariant Labs' April 2025 research~\cite{invariantlabs2025mcp,labs2025mcpscan} demonstrated all
+three classes against real MCP servers, including cross-origin privilege escalation
+through chained tool calls.
+The SANDWORM\_MODE npm campaign~\cite{sandworm2025} applied MCP injection at the
+package supply chain level, embedding exfiltration payloads in 19 widely installed
+packages.
+
+\textbf{Scale of exposure.}
+The unauthenticated admin panel vulnerability affecting 8,000+ MCP servers
+\cite{exposedmcp2026} illustrates that MCP infrastructure does not yet implement
+the access control patterns required for a hostile internet environment.
+The by-design RCE in the MCP SDK STDIO interface~\cite{mcprce2026} affected over
+150 million SDK downloads, qualifying it as one of the highest-reach
+vulnerabilities in the AI tooling ecosystem to date.
+Chen et al.~\cite{chen2026credential} analyzed 17,022 agent skills and found 520
+vulnerable, with 76.3\% of issues requiring joint code-and-natural-language
+analysis to detect --- a modality that static code scanners do not support.
+
+\textbf{Limitation of existing MCP security tooling.}
+Current MCP security tools, including MCP-Scan and the Snyk/Invariant CLI,
+provide static inspection of MCP server tool descriptions at installation time.
+They cannot detect dynamic rug-pull attacks in which descriptions change
+post-installation.
+They do not enforce policy at execution boundaries and do not integrate
+credentials cloaking or post-hoc sweep for secrets exfiltrated through MCP tool
+calls.
+Prismor Warden's MCP/skill scanner rule category applies at the \texttt{PreToolUse}
+hook, evaluating actual tool-call arguments --- not static descriptions --- at the
+moment of execution.
+
+\textbf{Secrets and credential leakage.}
+\label{subsec:secrets}
+The GitGuardian State of Secrets Sprawl 2026~\cite{gitguardian2026state} documents
+28.65 million hardcoded secrets on public GitHub in 2025, a 34\% year-over-year
+increase, including 1,275,105 AI service credentials (an 81\% increase).
+The disparity between Claude Code-assisted commit leak rate (3.2\%) and the
+human baseline (1.5\%) demonstrates that AI coding agents introduce a
+measurable, attributable increase in exposure risk independent of adversarial
+attack~\cite{gitguardian2026state}.
+Notably, 64\% of credentials exposed before 2022 remained exploitable as of
+January 2026, and 28\% of incidents involve non-code channels (Slack, Jira),
+indicating that leaked credentials persist long after the initial exposure
+event~\cite{gitguardian2026state}.
+CVE-2025-68664~\cite{langchainrce2025} demonstrates that exposed credentials
+in AI framework pipelines translate directly to RCE paths.
+
+Existing detection tools (GitGuardian scanning, LLM Guard, Nightfall) operate
+post-exposure: they identify secrets that are already committed, already in
+transcripts, or already transmitted to cloud APIs.
+No existing open-source or commercial tool implements pre-emptive placeholder
+substitution at the agent's prompt-submission boundary, which is the only
+interception point that can prevent a secret from ever entering model context
+or leaving the developer's machine.
+Prismor Cloak fills this gap.
+
+\textbf{Threat taxonomy surveys.}
+Kim et al.~\cite{kim2026attack} (arXiv:2603.11088) survey the
+AI agent attack and defense landscape across seven design dimensions, providing
+the most systematic taxonomy available as of April 2026.
+Maloyan and Namiot~\cite{maloyan2026prompt} (arXiv:2601.17548) systematize 78
+studies and identify 42 distinct attack techniques with a composite success
+rate exceeding 85\% against current defenses.
+The OWASP Top 10 for LLM Applications v1.1~\cite{foundation2025owasp} defines 10 risk
+categories including prompt injection, insecure output handling, sensitive
+information disclosure, and supply chain vulnerabilities.
+These taxonomies are descriptive: they classify attack vectors and enumerate
+defenses but do not map to the enforcement architecture of any deployed product.
+Prismor maps all three layers explicitly to OWASP LLM categories, covering 6--7
+of the 10 risks with direct enforcement or detection capability.
+
+% =========================================================
+% Remaining sections (placeholder, per template structure)
+% =========================================================
+\section{Prismor: Defense-in-Depth Architecture}
+% ARCHITECTURE GOES HERE
+
+\subsection{Warden: Hook-Layer Runtime Enforcement}
+% WARDEN GOES HERE
+
+\subsection{Cloak: Pre-emptive Secret Substitution}
+% CLOAK GOES HERE
+
+\subsection{Sweep: Post-hoc Secret Remediation}
+% SWEEP GOES HERE
+
+\subsection{Immunity Feed: Signed Threat Intelligence}
+% FEED GOES HERE
+
+\section{Competitive Analysis}
+% COMPETITIVE ANALYSIS GOES HERE
+
+\subsection{Competitive Map and Taxonomy}
+% MAP GOES HERE
+
+\subsection{Vendor Profiles}
+% VENDOR PROFILES GOES HERE
+
+\subsection{Capability Matrix}
+% MATRIX GOES HERE
+
+\section{Evaluation}
+% EVALUATION GOES HERE
+
+\subsection{OWASP LLM Top 10 Coverage}
+% OWASP GOES HERE
+
+\subsection{Secrets Leakage Empirical Evidence}
+% EMPIRICAL GOES HERE
+
+\subsection{Attack Success Rate Benchmarks}
+% BENCHMARKS GOES HERE
+
+\section{Market Opportunity and Strategic Roadmap}
+% MARKET GOES HERE
+
+\subsection{Market Sizing and Growth}
+% SIZING GOES HERE
+
+\subsection{Strategic Opportunities}
+% OPPORTUNITIES GOES HERE
+
+\subsection{Product Roadmap}
+% ROADMAP GOES HERE
+
+\subsection{Go-to-Market Strategy}
+% GTM GOES HERE
+
+\section{Conclusion}
+% CONCLUSION GOES HERE
+
+\bibliographystyle{plainnat}
+\bibliography{refs}
+
+\end{document}
