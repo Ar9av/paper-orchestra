@@ -141,7 +141,7 @@ def make_styles() -> dict:
 
 # ── Header / footer ───────────────────────────────────────────────────────────
 
-def on_page(canvas, doc, short_title: str):
+def on_page(canvas, doc, short_title: str, byline: str = ""):
     canvas.saveState()
     y_h = PAGE_H - M_TOP + 8
     canvas.setStrokeColor(C_RULE)
@@ -150,8 +150,8 @@ def on_page(canvas, doc, short_title: str):
     canvas.setFont("Times-Italic", 7.5)
     canvas.setFillColor(C_MUTED)
     canvas.drawString(M_LEFT, y_h + 2, short_title)
-    canvas.drawRightString(PAGE_W - M_RIGHT, y_h + 2,
-                           "Prismor Security — Technical Report, April 2026")
+    if byline:
+        canvas.drawRightString(PAGE_W - M_RIGHT, y_h + 2, byline)
     y_f = M_BOTTOM - 12
     canvas.line(M_LEFT, y_f, PAGE_W - M_RIGHT, y_f)
     canvas.drawCentredString(PAGE_W / 2, y_f - 10, str(doc.page))
@@ -160,16 +160,18 @@ def on_page(canvas, doc, short_title: str):
 
 # ── Page templates ────────────────────────────────────────────────────────────
 
-def build_doc(out_path: str, short_title: str) -> BaseDocTemplate:
+def build_doc(out_path: str, short_title: str,
+              title_meta: str = "", author_meta: str = "",
+              byline: str = "") -> BaseDocTemplate:
     doc = BaseDocTemplate(
         out_path, pagesize=letter,
         leftMargin=M_LEFT, rightMargin=M_RIGHT,
         topMargin=M_TOP, bottomMargin=M_BOTTOM,
-        title="Prismor Immunity Agent",
-        author="Prismor Security",
+        title=title_meta or short_title,
+        author=author_meta,
     )
 
-    cb = lambda c, d: on_page(c, d, short_title)
+    cb = lambda c, d: on_page(c, d, short_title, byline)
 
     # Page 1: full-width title+abstract strip at top, two columns below
     title_y = PAGE_H - M_TOP - TITLE_STRIP_H   # y-coordinate (from bottom) of bottom of title frame
@@ -512,10 +514,11 @@ def parse_markdown(md_text: str, styles: dict, col_width: float,
             i += 1
             continue
 
-        # Explicit diagram marker
+        # Explicit diagram marker (only honored when --demo-diagram is set)
         if line.strip() == "<!-- ARCH_DIAGRAM -->":
-            flowables.extend(make_arch_diagram(S, col_width))
-            diagram_injected = True
+            if inject_diagram:
+                flowables.extend(make_arch_diagram(S, col_width))
+                diagram_injected = True
             i += 1
             continue
 
@@ -654,7 +657,8 @@ def parse_markdown(md_text: str, styles: dict, col_width: float,
 
 # ── Title block (fills the full-width title frame on page 1) ─────────────────
 
-def build_title_block(styles: dict, title_text: str, abstract_text: str) -> list:
+def build_title_block(styles: dict, title_text: str, abstract_text: str,
+                      byline: str = "") -> list:
     S = styles
     flows = [
         Spacer(1, 0.08 * inch),
@@ -662,8 +666,9 @@ def build_title_block(styles: dict, title_text: str, abstract_text: str) -> list
         Spacer(1, 0.04 * inch),
         HRFlowable(width="55%", thickness=1.5, color=C_BLUE,
                    hAlign="CENTER", spaceBefore=2, spaceAfter=3),
-        Paragraph("Prismor Security  ·  Technical Report, April 2026", S["subtitle"]),
     ]
+    if byline:
+        flows.append(Paragraph(byline, S["subtitle"]))
     if abstract_text:
         flows += [
             Paragraph("Abstract", S["abstract_h"]),
@@ -684,8 +689,16 @@ def main() -> int:
                    help="Full paper title (read from first # heading if omitted)")
     p.add_argument("--title-short", dest="title_short", default=None,
                    help="Short title for header")
-    p.add_argument("--no-diagram",  dest="no_diagram", action="store_true",
-                   help="Skip auto-inserting the architecture diagram")
+    p.add_argument("--byline",      default="",
+                   help="Optional byline / venue strap shown under the title and "
+                        "in the right side of the page header (e.g. "
+                        "'NeurIPS 2026 Submission' or 'GC Biopharma · April 2026')")
+    p.add_argument("--author",      default="",
+                   help="Author string written into PDF metadata")
+    p.add_argument("--demo-diagram", dest="demo_diagram", action="store_true",
+                   help="Insert the legacy Prismor Immunity Agent demo "
+                        "architecture diagram (auto-injected before §4 and on "
+                        "<!-- ARCH_DIAGRAM --> markers). Off by default.")
     args = p.parse_args()
 
     md_path = Path(args.input)
@@ -707,10 +720,13 @@ def main() -> int:
     abstract_text = extract_abstract(md_text)
 
     styles = make_styles()
-    doc    = build_doc(args.output, short_title)
+    doc    = build_doc(args.output, short_title,
+                       title_meta=title, author_meta=args.author,
+                       byline=args.byline)
 
     # Title block (full-width): title + abstract
-    title_block = build_title_block(styles, title, abstract_text)
+    title_block = build_title_block(styles, title, abstract_text,
+                                    byline=args.byline)
 
     # Body flowables: skip the abstract (already in title block)
     # FrameBreak pushes remaining title-frame space into the two-column area
@@ -719,7 +735,7 @@ def main() -> int:
         + [NextPageTemplate("TwoCol")]
         + parse_markdown(
             md_text, styles, col_width=COL_W,
-            inject_diagram=not args.no_diagram,
+            inject_diagram=args.demo_diagram,
             skip_abstract=True,
         )
     )
